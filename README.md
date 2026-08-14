@@ -1,5 +1,6 @@
 # PaperLens: Multimodal RAG over Scientific Papers (Text + Figures)
 
+[![CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml)
 [![repo](https://img.shields.io/badge/github-yjkong04%2Fmultimodal--scientific--rag-blue)](https://github.com/yjkong04/multimodal-scientific-rag)
 
 **A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (Claude), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**

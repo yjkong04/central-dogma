@@ -32,4 +32,11 @@ describe("POST /api/ask", () => {
     expect(res.status).toBe(502);
     expect((await res.json()).error).toMatch(/reach the API/);
   });
+
+  it("maps an upstream non-ok status to a 502 error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("upstream boom", { status: 500 })));
+    const res = await POST(req({ question: "what does the figure show" }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toMatch(/backend error \(500\)/);
+  });
 });

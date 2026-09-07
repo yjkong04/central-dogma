@@ -1,0 +1,4 @@
+.bar { display: flex; gap: 8px; }
+.input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+.button { padding: 10px 16px; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }

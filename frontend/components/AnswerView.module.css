@@ -1,0 +1,4 @@
+.answer { line-height: 1.7; font-size: 1.05rem; }
+.marker { border: none; background: var(--accent-weak); color: var(--accent); border-radius: 4px; padding: 0 4px; cursor: pointer; font: inherit; }
+.marker[data-active="true"] { outline: 2px solid var(--accent); }
+.note { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }

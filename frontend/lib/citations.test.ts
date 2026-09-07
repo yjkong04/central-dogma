@@ -41,6 +41,17 @@ describe("tokenizeAnswer", () => {
     const toks = tokenizeAnswer("Plain prose.", cites);
     expect(toks).toEqual([{ kind: "text", text: "Plain prose." }]);
   });
+  it("handles adjacent markers without empty text tokens between them", () => {
+    const toks = tokenizeAnswer("[Figure 3][Methods]", cites);
+    expect(toks).toEqual([
+      { kind: "marker", label: "Figure 3", sourceIds: ["P:fig3"] },
+      { kind: "text", text: "[Methods]" },
+    ]);
+  });
+  it("returns empty array for empty string", () => {
+    const toks = tokenizeAnswer("", cites);
+    expect(toks).toEqual([]);
+  });
 });
 
 describe("hasInlineMarkers", () => {

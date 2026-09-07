@@ -27,6 +27,7 @@ export function AnswerView({
               type="button"
               className={styles.marker}
               data-marker={t.label}
+              data-source-ids={t.sourceIds.join(" ")}
               data-active={t.sourceIds.some((s) => activeSourceIds.includes(s))}
               onMouseEnter={() => onHoverSources(t.sourceIds)}
               onFocus={() => onHoverSources(t.sourceIds)}

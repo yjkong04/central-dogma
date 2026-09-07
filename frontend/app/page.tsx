@@ -34,6 +34,21 @@ export default function Page() {
     }
   }
 
+  function highlightFromMarker(ids: string[]) {
+    setActiveSourceIds(ids);
+    if (ids[0]) {
+      document
+        .querySelector(`[data-source-id="${ids[0]}"]`)
+        ?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    }
+  }
+  function highlightFromCard(sid: string) {
+    setActiveSourceIds([sid]);
+    document
+      .querySelector(`[data-source-ids~="${sid}"]`)
+      ?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }
+
   const showExamples = !response && !loading && !error;
 
   return (
@@ -62,12 +77,12 @@ export default function Page() {
             answer={response.answer}
             citations={response.citations}
             activeSourceIds={activeSourceIds}
-            onHoverSources={setActiveSourceIds}
+            onHoverSources={highlightFromMarker}
           />
           <EvidencePanel
             citations={response.citations}
             activeSourceIds={activeSourceIds}
-            onActivate={(sid) => setActiveSourceIds([sid])}
+            onActivate={highlightFromCard}
           />
         </div>
       )}

@@ -37,4 +37,16 @@ describe("Page", () => {
     ask("what does the figure show about dose");
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("couldn't reach the API"));
   });
+  it("highlights the source card when its inline marker is clicked", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(answeredMarkers as AskResponse);
+    const { container } = render(<Page />);
+    ask("what does the figure show about dose");
+    const marker = await screen.findByRole("button", { name: "Results" });
+    fireEvent.click(marker);
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-source-id="DEMO-0001:c2"]')
+      ).toHaveAttribute("data-active", "true")
+    );
+  });
 });

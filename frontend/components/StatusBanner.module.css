@@ -1,0 +1,4 @@
+.banner { padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
+.error { background: var(--danger-weak); color: var(--danger); }
+.refused { background: var(--warn-weak); color: var(--warn); }
+.answered { background: var(--accent-weak); color: var(--muted); }

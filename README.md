@@ -3,7 +3,7 @@
 [![CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml)
 [![repo](https://img.shields.io/badge/github-yjkong04%2Fmultimodal--scientific--rag-blue)](https://github.com/yjkong04/multimodal-scientific-rag)
 
-**A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (Claude), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**
+**A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (a local Qwen2.5-VL model, behind a swappable generator interface), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**
 
 **Keywords:** multimodal RAG · vision-language models · hybrid retrieval · pgvector · retrieval evaluation · hallucination benchmarking · FastAPI · Next.js
 
@@ -24,7 +24,7 @@ Text-only RAG is table stakes. But scientific knowledge lives as much in figures
 ### What "done" looks like (v1)
 1. Ingest ~200 open-access papers: text chunked, figures extracted with captions, both embedded and stored.
 2. A question hits **hybrid retrieval** over text chunks *and* figure records, and the top-k from both modalities are assembled into one context window.
-3. A vision-language model (Claude) generates an answer that **cites specific figures and passages** and refuses when the corpus doesn't support an answer.
+3. A vision-language model (local Qwen2.5-VL, swappable for another `Generator`) generates an answer that **cites specific figures and passages** and refuses when the corpus doesn't support an answer.
 4. A **document viewer** frontend renders the source paper with the cited passages and figures highlighted.
 5. A **hallucination benchmark**: a held-out question set with known answers, scored for groundedness, citation accuracy, and refusal-when-unsupported.
 
@@ -55,7 +55,7 @@ Multi-paper synthesis across the whole corpus, PDF layout parsing beyond what th
    question ─►  Hybrid retrieval (text k + figures k)  ─►  Context assembly
                                  │                              │
                                  ▼                              ▼
-                        VLM (Claude) generates grounded, cited answer
+                     VLM (local Qwen2.5-VL) generates grounded, cited answer
                                  │
                                  ▼
                 Next.js viewer: paper with highlighted citations
@@ -64,7 +64,7 @@ Multi-paper synthesis across the whole corpus, PDF layout parsing beyond what th
 ## Stack
 - **Backend:** Python, FastAPI
 - **Vector store:** Postgres + pgvector
-- **VLM:** Claude (vision) for figure reasoning and answer generation; embeddings for retrieval
+- **VLM:** local Qwen2.5-VL (vision) for figure reasoning and answer generation, behind a swappable generator interface (with a deterministic extractive baseline); local embeddings for retrieval
 - **Frontend:** Next.js document viewer (later milestone)
 
 ## Status

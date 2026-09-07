@@ -1,0 +1,11 @@
+{
+  "answer": "Response increased monotonically with dose up to the mid range and then plateaued. Figure 3 supports this: Figure 3. Dose-response curve.",
+  "citations": [
+    {"modality": "text", "paper_id": "DEMO-0001", "source_id": "DEMO-0001:c2", "section": "Results", "figure_label": null, "image_uri": null, "snippet": "Response increased monotonically with dose up to the mid range and then plateaued.", "score": 0.41},
+    {"modality": "figure", "paper_id": "DEMO-0001", "source_id": "DEMO-0001:fig3", "section": "Results", "figure_label": "Figure 3", "image_uri": "demo://figure-3", "snippet": "Figure 3. Dose-response curve.", "score": 0.38}
+  ],
+  "status": "answered",
+  "backend": "demo",
+  "confidence": 0.41,
+  "sections_covered": 1
+}

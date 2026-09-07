@@ -1,0 +1,11 @@
+{
+  "answer": "Response rises with dose then plateaus [Results]. The dose-response curve confirms this [Figure 3].",
+  "citations": [
+    {"modality": "text", "paper_id": "DEMO-0001", "source_id": "DEMO-0001:c2", "section": "Results", "figure_label": null, "image_uri": null, "snippet": "Response increased monotonically with dose up to the mid range and then plateaued.", "score": 0.82},
+    {"modality": "figure", "paper_id": "DEMO-0001", "source_id": "DEMO-0001:fig3", "section": "Results", "figure_label": "Figure 3", "image_uri": "https://cdn.example.org/fig3.jpg", "snippet": "Figure 3. Dose-response curve. Response rises with dose then plateaus.", "score": 0.79}
+  ],
+  "status": "answered",
+  "backend": "pgvector",
+  "confidence": 0.82,
+  "sections_covered": 1
+}

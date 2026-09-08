@@ -1,4 +1,4 @@
-# PaperLens: Multimodal RAG over Scientific Papers (Text + Figures)
+# Central Dogma: Multimodal RAG over Scientific Papers (Text + Figures)
 
 [![CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml)
 [![repo](https://img.shields.io/badge/github-yjkong04%2Fmultimodal--scientific--rag-blue)](https://github.com/yjkong04/multimodal-scientific-rag)
@@ -108,13 +108,13 @@ pip install -r requirements-ml.txt
 python -m ingest --query "heart rate variability sepsis" --limit 5 --write
 
 # 4. Serve /ask on the real corpus
-PAPERLENS_STORE_BACKEND=pgvector uvicorn api.main:app --reload
+CENTRALDOGMA_STORE_BACKEND=pgvector uvicorn api.main:app --reload
 curl -s -X POST localhost:8000/ask -H 'content-type: application/json' \
   -d '{"question": "How is heart rate variability used to predict sepsis?"}' | python3 -m json.tool
 ```
 
 Embeddings default to `BAAI/bge-small-en-v1.5` (384-dim, CPU-friendly). For tests
-or a torch-free run, set `PAPERLENS_EMBEDDER=hashing` (deterministic, not semantic).
+or a torch-free run, set `CENTRALDOGMA_EMBEDDER=hashing` (deterministic, not semantic).
 
 ## Evaluation
 
@@ -130,7 +130,7 @@ than eyeballed:
 
 ```bash
 # Runs on the demo corpus with no DB and no model (deterministic):
-PAPERLENS_EMBEDDER=hashing python -m evaluation
+CENTRALDOGMA_EMBEDDER=hashing python -m evaluation
 
 # Real corpus + a corpus-specific eval set:
 python -m evaluation --backend pgvector --dataset evaluation/datasets/pmc_eval.jsonl

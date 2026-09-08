@@ -4,7 +4,7 @@ Examples
 --------
 Baseline eval on the demo corpus (no DB, no model)::
 
-    PAPERLENS_EMBEDDER=hashing python -m evaluation
+    CENTRALDOGMA_EMBEDDER=hashing python -m evaluation
 
 Real corpus with the vision model, custom eval set::
 

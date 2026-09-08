@@ -14,7 +14,7 @@ from .schemas import AskRequest, AskResponse
 from .store import DemoStore, PgVectorStore, Store
 
 app = FastAPI(
-    title="PaperLens",
+    title="Central Dogma",
     version="0.1.0",
     description="Multi-modal RAG over scientific papers: cited answers over text and figures.",
 )

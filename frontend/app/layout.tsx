@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PaperLens — cited answers over papers",
+  title: "Central Dogma — cited answers over papers",
   description: "Multimodal RAG viewer: grounded, cited answers over scientific papers.",
 };
 

@@ -1,6 +1,7 @@
 # Central Dogma: Multimodal RAG over Scientific Papers (Text + Figures)
 
 [![CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml)
+[![frontend CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/frontend-ci.yml)
 [![repo](https://img.shields.io/badge/github-yjkong04%2Fmultimodal--scientific--rag-blue)](https://github.com/yjkong04/multimodal-scientific-rag)
 
 **A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (a local Qwen2.5-VL model, behind a swappable generator interface), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**
@@ -65,10 +66,10 @@ Multi-paper synthesis across the whole corpus, PDF layout parsing beyond what th
 - **Backend:** Python, FastAPI
 - **Vector store:** Postgres + pgvector
 - **VLM:** local Qwen2.5-VL (vision) for figure reasoning and answer generation, behind a swappable generator interface (with a deterministic extractive baseline); local embeddings for retrieval
-- **Frontend:** Next.js document viewer (later milestone)
+- **Frontend:** Next.js + TypeScript viewer — the grounded answer with inline citations and an evidence panel of source cards, with click-to-highlight (see [Web viewer](#web-viewer-nextjs))
 
 ## Status
-Weeks 1–5 done: the API runs on a built-in demo store with zero setup, **and** on a real corpus — PubMed Central Open Access papers ingested into pgvector, answered by dense (HNSW cosine) retrieval, multi-hop context assembly, and a local vision-language model, with citations to real passages and figures. An evaluation harness scores retrieval, groundedness, and refusal, and drives a comparison across candidate local VLMs.
+Weeks 1–6 done: the API runs on a built-in demo store with zero setup, **and** on a real corpus — PubMed Central Open Access papers ingested into pgvector, answered by dense (HNSW cosine) retrieval, multi-hop context assembly, and a local vision-language model, with citations to real passages and figures. An evaluation harness scores retrieval, groundedness, and refusal, and drives a comparison across candidate local VLMs. A **Next.js viewer** renders the grounded answer with inline citations and an evidence panel, so clicking a claim highlights the passage or figure it came from.
 
 ## Quickstart
 
@@ -85,6 +86,22 @@ curl -s localhost:8000/health
 curl -s -X POST localhost:8000/ask -H 'content-type: application/json' \
   -d '{"question": "What does the figure show about dose and response?"}' | python3 -m json.tool
 ```
+
+### Web viewer (Next.js)
+
+A local viewer renders the cited answer with an evidence panel of source cards;
+clicking a claim highlights the passage or figure it came from (and vice-versa).
+It talks to the API through a same-origin proxy route, so the backend is
+unchanged and no CORS setup is needed.
+
+```bash
+# Terminal 1 — backend (demo store, zero DB):
+uvicorn api.main:app --reload
+# Terminal 2 — frontend:
+cd frontend && npm install && npm run dev   # http://localhost:3000
+```
+
+<!-- Demo GIF to be added: docs/viewer-demo.gif -->
 
 ### Run with Docker
 

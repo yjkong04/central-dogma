@@ -13,12 +13,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="PAPERLENS_", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="CENTRALDOGMA_", extra="ignore")
 
     # "demo" (in-memory, no deps) or "pgvector" (real corpus).
     store_backend: str = "demo"
 
-    database_url: str = "postgresql://paperlens:paperlens@localhost:5432/paperlens"
+    database_url: str = "postgresql://centraldogma:centraldogma@localhost:5432/centraldogma"
 
     # Embeddings. "sentence-transformer" (local HF, production) or "hashing"
     # (deterministic, dependency-light, for tests/CI). Keep embedding_dim in sync

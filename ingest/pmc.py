@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from xml.etree import ElementTree as ET
 
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-_USER_AGENT = "multimodal-scientific-rag/0.1 (https://github.com/yjkong04/multimodal-scientific-rag)"
+_USER_AGENT = "central-dogma/0.1 (https://github.com/yjkong04/multimodal-scientific-rag)"
 
 
 @dataclass

@@ -24,7 +24,7 @@ from typing import Protocol
 
 from .schemas import Citation, Modality
 
-_USER_AGENT = "multimodal-scientific-rag/0.1"
+_USER_AGENT = "central-dogma/0.1"
 
 _SYSTEM = (
     "You are a scientific literature assistant. Answer the question using ONLY the "

@@ -53,7 +53,7 @@ export default function Page() {
 
   return (
     <main className={styles.main}>
-      <h1>PaperLens</h1>
+      <h1>Central Dogma</h1>
       <AskBar onAsk={run} disabled={loading} />
 
       {showExamples && (

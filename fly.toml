@@ -7,7 +7,7 @@ primary_region = "yyz"  # Toronto
   dockerfile = "Dockerfile"
 
 [env]
-  PAPERLENS_STORE_BACKEND = "demo"
+  CENTRALDOGMA_STORE_BACKEND = "demo"
 
 [http_service]
   internal_port = 8000

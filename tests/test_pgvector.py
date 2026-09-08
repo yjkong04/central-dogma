@@ -4,7 +4,7 @@ Skipped unless a database is reachable (so the default CI run without a DB
 stays green). To run it:
 
     docker compose up -d db
-    PAPERLENS_TEST_DB=1 python -m pytest tests/test_pgvector.py
+    CENTRALDOGMA_TEST_DB=1 python -m pytest tests/test_pgvector.py
 
 Seeds a couple of rows through the real write path with the deterministic
 hashing embedder, queries via PgVectorStore, and cleans up after itself.
@@ -15,8 +15,8 @@ import os
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("PAPERLENS_TEST_DB") != "1",
-    reason="set PAPERLENS_TEST_DB=1 with a running pgvector DB to run",
+    os.environ.get("CENTRALDOGMA_TEST_DB") != "1",
+    reason="set CENTRALDOGMA_TEST_DB=1 with a running pgvector DB to run",
 )
 
 

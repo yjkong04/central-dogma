@@ -3,7 +3,7 @@
 FROM python:3.11-slim
 
 # Link the GHCR package back to the repo and license.
-LABEL org.opencontainers.image.source="https://github.com/yjkong04/multimodal-scientific-rag"
+LABEL org.opencontainers.image.source="https://github.com/yjkong04/central-dogma"
 LABEL org.opencontainers.image.description="Multi-modal RAG over scientific papers: cited answers over text and figures"
 LABEL org.opencontainers.image.licenses="MIT"
 

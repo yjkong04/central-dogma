@@ -1,8 +1,8 @@
 # Central Dogma: Multimodal RAG over Scientific Papers (Text + Figures)
 
-[![CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/ci.yml)
-[![frontend CI](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/yjkong04/multimodal-scientific-rag/actions/workflows/frontend-ci.yml)
-[![repo](https://img.shields.io/badge/github-yjkong04%2Fmultimodal--scientific--rag-blue)](https://github.com/yjkong04/multimodal-scientific-rag)
+[![CI](https://github.com/yjkong04/central-dogma/actions/workflows/ci.yml/badge.svg)](https://github.com/yjkong04/central-dogma/actions/workflows/ci.yml)
+[![frontend CI](https://github.com/yjkong04/central-dogma/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/yjkong04/central-dogma/actions/workflows/frontend-ci.yml)
+[![repo](https://img.shields.io/badge/github-yjkong04%2Fcentral--dogma-blue)](https://github.com/yjkong04/central-dogma)
 
 **A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (a local Qwen2.5-VL model, behind a swappable generator interface), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**
 
@@ -108,7 +108,7 @@ cd frontend && npm install && npm run dev   # http://localhost:3000
 A prebuilt image is published to GHCR:
 
 ```bash
-docker run -p 8000:8000 ghcr.io/yjkong04/multimodal-scientific-rag:latest
+docker run -p 8000:8000 ghcr.io/yjkong04/central-dogma:latest
 curl -s localhost:8000/health
 ```
 

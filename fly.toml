@@ -1,6 +1,6 @@
 # Fly.io config for the API. Deploy: `fly launch --copy-config` then `fly deploy`.
 # Serves the demo store with no external services attached.
-app = "multimodal-scientific-rag"
+app = "central-dogma"
 primary_region = "yyz"  # Toronto
 
 [build]

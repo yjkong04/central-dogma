@@ -8,9 +8,12 @@ switches on `settings.store_backend` — no changes to the API layer.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
+
+import numpy as np
 
 from .schemas import Modality
 
@@ -183,6 +186,72 @@ class PgVectorStore:
             )
             for figure_id, paper_id, section, figure_label, caption, image_uri, score in rows
         ]
+
+
+class FileVectorStore:
+    """Dense retrieval over a pre-embedded JSON corpus, held in memory.
+
+    Real papers, no database. The query is embedded at request time with the
+    injected embedder; ranking is a dot product over L2-normalized vectors
+    (== cosine), matching PgVectorStore's score semantics.
+    """
+
+    def __init__(self, records: list[Record], matrix: np.ndarray, embedder: "Embedder") -> None:
+        self._records = records
+        self._matrix = matrix  # (N, dim), L2-normalized
+        self._embedder = embedder
+
+    @property
+    def name(self) -> str:
+        return "file"
+
+    @classmethod
+    def from_file(cls, path: str, embedder: "Embedder") -> "FileVectorStore":
+        from .embeddings import _l2_normalize
+
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        records: list[Record] = []
+        vecs: list[list[float]] = []
+        for r in data["records"]:
+            records.append(
+                Record(
+                    paper_id=r["paper_id"],
+                    source_id=r["source_id"],
+                    modality=Modality(r["modality"]),
+                    text=r["text"],
+                    section=r.get("section"),
+                    figure_label=r.get("figure_label"),
+                    image_uri=r.get("image_uri"),
+                )
+            )
+            vecs.append(r["embedding"])
+        matrix = (
+            _l2_normalize(np.asarray(vecs, dtype=np.float32))
+            if records
+            else np.zeros((0, int(data["dim"])), dtype=np.float32)
+        )
+        return cls(records, matrix, embedder)
+
+    def _search(self, query: str, k: int, modality: Modality) -> list[ScoredRecord]:
+        if k <= 0 or not self._records:
+            return []
+        q = self._embedder.embed([query])[0]
+        scores = self._matrix @ q
+        order = np.argsort(-scores)
+        hits: list[ScoredRecord] = []
+        for i in order:
+            if self._records[i].modality == modality:
+                hits.append(ScoredRecord(self._records[i], float(scores[i])))
+                if len(hits) == k:
+                    break
+        return hits
+
+    def search_text(self, query: str, k: int) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.TEXT)
+
+    def search_figures(self, query: str, k: int) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.FIGURE)
 
 
 def _demo_records() -> list[Record]:

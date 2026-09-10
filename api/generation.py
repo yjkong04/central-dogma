@@ -18,7 +18,9 @@ turns that into a refusal.
 
 from __future__ import annotations
 
+import base64
 import io
+import json
 import urllib.request
 from typing import Protocol
 
@@ -67,6 +69,26 @@ def _fetch_image(url: str):
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read()
     return Image.open(io.BytesIO(data)).convert("RGB")
+
+
+def _boto3_client(region: str):
+    import boto3  # lazy
+
+    return boto3.client("bedrock-runtime", region_name=region)
+
+
+_IMG_TYPES = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+              "gif": "image/gif", "webp": "image/webp"}
+
+
+def _fetch_image_bytes(url: str) -> tuple[bytes, str]:
+    """Fetch a figure image as raw bytes + media type. No PIL (torch-free path)."""
+    req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        data = resp.read()
+        ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip()
+    media = ctype if ctype in _IMG_TYPES.values() else _IMG_TYPES.get(url.rsplit(".", 1)[-1].lower(), "image/jpeg")
+    return data, media
 
 
 class QwenVisionGenerator:
@@ -135,9 +157,55 @@ class QwenVisionGenerator:
         return "" if answer.strip().upper().startswith("NO_ANSWER") else answer
 
 
+class BedrockGenerator:
+    """Amazon Bedrock Claude (vision). Auth via the Lambda IAM role (no key).
+    Reasons over retrieved passages + figure images, emits inline
+    [section]/[Figure N] citations, and returns '' on NO_ANSWER (refusal)."""
+
+    def __init__(self, model_id: str, region: str, max_tokens: int = 512) -> None:
+        self._model_id = model_id
+        self._max_tokens = max_tokens
+        self._client = _boto3_client(region)
+
+    def _content(self, question: str, citations: list[Citation]) -> list[dict]:
+        text, figures = _split(citations)
+        blocks: list[dict] = []
+        if text:
+            passages = "\n\n".join(f"[Passage — {c.section or 'source'}]: {c.snippet}" for c in text)
+            blocks.append({"type": "text", "text": "Text sources:\n" + passages})
+        for c in figures:
+            blocks.append({"type": "text", "text": f"{c.figure_label or 'Figure'} caption: {c.snippet}"})
+            if c.image_uri:
+                try:
+                    img, media = _fetch_image_bytes(c.image_uri)
+                    blocks.append({"type": "image", "source": {
+                        "type": "base64", "media_type": media,
+                        "data": base64.b64encode(img).decode(),
+                    }})
+                except Exception:
+                    pass  # unreachable image: caption text already added
+        blocks.append({"type": "text", "text": f"Question: {question}"})
+        return blocks
+
+    def generate(self, question: str, citations: list[Citation]) -> str:
+        body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": self._max_tokens,
+            "system": _SYSTEM,
+            "messages": [{"role": "user", "content": self._content(question, citations)}],
+        }
+        resp = self._client.invoke_model(modelId=self._model_id, body=json.dumps(body))
+        payload = json.loads(resp["body"].read())
+        answer = "".join(b.get("text", "") for b in payload.get("content", [])).strip()
+        return "" if answer.upper().startswith("NO_ANSWER") else answer
+
+
 def build_generator(kind: str, model_name: str) -> Generator:
     if kind == "extractive":
         return ExtractiveGenerator()
     if kind == "qwen-vision":
         return QwenVisionGenerator(model_name=model_name)
+    if kind == "bedrock":
+        from .config import get_settings
+        return BedrockGenerator(model_name, get_settings().aws_region)
     raise ValueError(f"unknown generator kind: {kind!r}")

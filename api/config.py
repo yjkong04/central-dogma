@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # depends on the embedder, so tune per embedding model).
     min_relevance_score: float = 0.0
 
+    # AWS live demo (Bedrock via IAM; no keys). See docs/superpowers/specs/2026-09-05-live-demo-aws-design.md
+    aws_region: str = "us-east-1"
+    bedrock_generation_model: str = "anthropic.claude-3-5-haiku-20241022-v1:0"
+    bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
+    demo_corpus_path: str = "api/data/demo_corpus.json"
+    allowed_origins: str = "*"  # comma-separated CORS origins for the public demo
+    demo_daily_cap: int = 500   # best-effort per-container /ask cap
+
 
 @lru_cache
 def get_settings() -> Settings:

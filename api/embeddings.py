@@ -21,6 +21,11 @@ from typing import Protocol
 import numpy as np
 
 
+def _boto3_client(region: str):
+    import boto3  # lazy: only the Bedrock path needs it
+    return boto3.client("bedrock-runtime", region_name=region)
+
+
 class Embedder(Protocol):
     @property
     def dim(self) -> int: ...
@@ -83,9 +88,38 @@ class SentenceTransformerEmbedder:
         return vecs.astype(np.float32)
 
 
+class BedrockEmbedder:
+    """Amazon Bedrock Titan Text Embeddings v2. Torch-free; auth via the
+    Lambda IAM role (no API key). Returns unit-normalized vectors."""
+
+    def __init__(self, model_id: str, region: str, dim: int = 1024) -> None:
+        self._model_id = model_id
+        self._dim = dim
+        self._client = _boto3_client(region)
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        import json
+        out = np.zeros((len(texts), self._dim), dtype=np.float32)
+        for i, text in enumerate(texts):
+            resp = self._client.invoke_model(
+                modelId=self._model_id,
+                body=json.dumps({"inputText": text, "dimensions": self._dim, "normalize": True}),
+            )
+            payload = json.loads(resp["body"].read())
+            out[i] = np.asarray(payload["embedding"], dtype=np.float32)
+        return _l2_normalize(out)
+
+
 def build_embedder(kind: str, model_name: str, dim: int) -> Embedder:
     if kind == "hashing":
         return HashingEmbedder(dim=dim)
     if kind == "sentence-transformer":
         return SentenceTransformerEmbedder(model_name=model_name)
+    if kind == "bedrock":
+        from .config import get_settings
+        return BedrockEmbedder(model_name, get_settings().aws_region, dim=dim)
     raise ValueError(f"unknown embedder kind: {kind!r}")

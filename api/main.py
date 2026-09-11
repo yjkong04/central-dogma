@@ -29,17 +29,23 @@ def _build_store() -> Store:
     if settings.store_backend == "pgvector":
         from .embeddings import build_embedder
 
-        embedder = build_embedder(
-            settings.embedder, settings.embedding_model, settings.embedding_dim
+        _emb_model = (
+            settings.bedrock_embedding_model
+            if settings.embedder == "bedrock"
+            else settings.embedding_model
         )
+        embedder = build_embedder(settings.embedder, _emb_model, settings.embedding_dim)
         return PgVectorStore(settings.database_url, embedder)
     if settings.store_backend == "file":
         from .embeddings import build_embedder
         from .store import FileVectorStore
 
-        embedder = build_embedder(
-            settings.embedder, settings.embedding_model, settings.embedding_dim
+        _emb_model = (
+            settings.bedrock_embedding_model
+            if settings.embedder == "bedrock"
+            else settings.embedding_model
         )
+        embedder = build_embedder(settings.embedder, _emb_model, settings.embedding_dim)
         return FileVectorStore.from_file(settings.demo_corpus_path, embedder)
     raise RuntimeError(f"unknown store_backend={settings.store_backend!r}")
 
@@ -47,7 +53,12 @@ def _build_store() -> Store:
 def _build_generator() -> Generator:
     settings = get_settings()
     # Building qwen-vision loads the model once, at startup, so /ask stays warm.
-    return build_generator(settings.generator, settings.vision_model)
+    model = (
+        settings.bedrock_generation_model
+        if settings.generator == "bedrock"
+        else settings.vision_model
+    )
+    return build_generator(settings.generator, model)
 
 
 # Built once for the process. The pgvector store holds the DB connection; the

@@ -1,0 +1,8 @@
+frontend/
+docs/
+.superpowers/
+tests/
+.git/
+*.md
+.venv/
+__pycache__/

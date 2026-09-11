@@ -1,7 +1,7 @@
 import type { ApiError, AskRequest, AskResponse } from "./types";
 
 export async function ask(req: AskRequest): Promise<AskResponse> {
-  const res = await fetch("/api/ask", {
+  const res = await fetch(process.env.NEXT_PUBLIC_API_URL ?? "/api/ask", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(req),

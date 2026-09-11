@@ -1,21 +1,20 @@
-# Minimal image for the API. Runs the demo store with no external deps,
-# so it deploys and serves /ask immediately.
-FROM python:3.11-slim
+# Lambda container image for the API. Runs FastAPI under the AWS Lambda Web
+# Adapter (LWA) so the same uvicorn app serves both Lambda invokes and local runs.
+FROM public.ecr.aws/lambda/python:3.11
 
-# Link the GHCR package back to the repo and license.
+# LWA: bridges Lambda's runtime API to a normal web server on $PORT.
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+ENV AWS_LWA_PORT=8000 PORT=8000
+
 LABEL org.opencontainers.image.source="https://github.com/yjkong04/central-dogma"
 LABEL org.opencontainers.image.description="Multi-modal RAG over scientific papers: cited answers over text and figures"
 LABEL org.opencontainers.image.licenses="MIT"
 
-WORKDIR /app
-
-# Deps first for layer caching.
+WORKDIR /var/task
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api/ ./api/
 
-EXPOSE 8000
-
-# Honor the platform's $PORT (Fly/Render inject it); default to 8000 locally.
+# LWA invokes this web server; uvicorn binds $PORT.
 CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

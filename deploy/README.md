@@ -40,6 +40,12 @@ Lambda's IAM policy scopes `bedrock:InvokeModel` to exactly these two model
 ARNs, so a deploy will succeed but calls will fail with an access-denied
 error until this step is done.
 
+Note: generation actually calls the **cross-region inference profile**
+`us.anthropic.claude-3-5-haiku-20241022-v1:0`, not the bare on-demand model
+id — Claude 3.5 Haiku requires it for on-demand invocation. Enabling model
+access for Claude 3.5 Haiku in the console (above) covers this; no separate
+opt-in is needed for the inference profile.
+
 ## 3. Build and commit the demo corpus
 
 The demo answers questions over a small, pre-embedded corpus baked into the
@@ -75,28 +81,20 @@ the IAM capabilities the template needs (it creates an execution role for
 the Lambda). It saves your answers to `deploy/samconfig.toml` for repeat
 deploys (`sam deploy` without `--guided` after the first run).
 
-When it finishes, note the three stack outputs — you'll need all of them:
+When it finishes, note the four stack outputs — you'll need all of them:
 
 - **`ApiUrl`** — the Lambda Function URL the frontend calls
 - **`SiteBucketName`** — the S3 bucket the static frontend syncs to
 - **`SiteUrl`** — the CloudFront URL you'll open at the end
-
-You'll also need the **CloudFront distribution id**, which isn't a stack
-output — grab it from the console (**CloudFront → Distributions**, matching
-`SiteUrl`'s domain) or:
-
-```bash
-aws cloudfront list-distributions \
-  --query "DistributionList.Items[?contains(DomainName, '<hostname from SiteUrl>')].Id" \
-  --output text
-```
+- **`SiteDistributionId`** — the CloudFront distribution id, needed to
+  invalidate the cache on each frontend deploy
 
 ## 5. Deploy the frontend
 
-From the repo root, using the three values from step 4:
+From the repo root, using the values from step 4:
 
 ```bash
-API_URL=<ApiUrl> BUCKET=<SiteBucketName> DIST_ID=<distribution-id> \
+API_URL=<ApiUrl> BUCKET=<SiteBucketName> DIST_ID=<SiteDistributionId> \
   deploy/frontend-deploy.sh
 ```
 
@@ -121,8 +119,9 @@ there regardless of which region you deployed the stack to.)
 ## 7. Open the demo
 
 Open **`SiteUrl`** (from step 4) in a browser. The frontend calls `ApiUrl`
-directly (browser → Lambda Function URL, CORS-enabled) — no proxy in the
-loop.
+directly (browser → Lambda Function URL) — no proxy in the loop. CORS is
+handled entirely by the app's own `CORSMiddleware` (`api/main.py`), not the
+Function URL, so there's a single CORS layer end-to-end.
 
 ## Cost note
 

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # AWS live demo (Bedrock via IAM; no keys). See docs/superpowers/specs/2026-09-05-live-demo-aws-design.md
     aws_region: str = "us-east-1"
-    bedrock_generation_model: str = "anthropic.claude-3-5-haiku-20241022-v1:0"
+    bedrock_generation_model: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
     demo_corpus_path: str = "api/data/demo_corpus.json"
     allowed_origins: str = "*"  # comma-separated CORS origins for the public demo

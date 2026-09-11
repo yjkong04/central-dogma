@@ -31,14 +31,11 @@ Resources:
             - Effect: Allow
               Action: [ "bedrock:InvokeModel" ]
               Resource:
-                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0"
+                - "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0"
+                - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0"
                 - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
       FunctionUrlConfig:
         AuthType: NONE
-        Cors:
-          AllowOrigins: [ !Ref AllowedOrigin ]
-          AllowMethods: [ "POST", "GET" ]
-          AllowHeaders: [ "content-type" ]
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ..
@@ -104,3 +101,5 @@ Outputs:
     Value: !Ref SiteBucket
   SiteUrl:
     Value: !Sub "https://${SiteDistribution.DomainName}"
+  SiteDistributionId:
+    Value: !Ref SiteDistribution

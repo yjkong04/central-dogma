@@ -20,15 +20,32 @@ from ingest.figures import attach_figure_image_urls
 from ingest.net import enable_os_trust_store
 from ingest.pmc import fetch_and_parse
 
-# Curated open-access PMC papers that demo well (biomedical, figure-rich).
-# PLACEHOLDER LIST -- this must be reviewed and filled with a real, verified
-# set of ~20 PMCIDs during deploy prep (see Task 10's runbook). Confirm each
-# resolves (fetch_and_parse succeeds, has a non-trivial chunk count) before
-# committing the real corpus; swap out any that 404 or are figure/text-thin.
+# Curated open-access PMC papers for the demo corpus — biomedical, figure-rich,
+# recruiter-legible (oncology / immunotherapy / genomics / gene-editing / imaging).
+# Selected 2026-09-11 from the PMC OA subset via `ingest.search_oa_pmcids`, keeping
+# papers with >=3 figure chunks and >=20 text chunks (figure count in the comment).
+# Each was verified to fetch_and_parse with the shown chunk counts; figure IMAGE
+# resolution + embeddings happen at build time (a figure whose CDN image doesn't
+# resolve degrades to caption-only). Swap any freely — this is just the demo set.
 PMCIDS = [
-    "PMC13403225", "PMC13402739",
-    # ... ~20 total; the implementer fills a reviewed list and prints per-paper
-    # chunk counts so a thin/blocked paper can be swapped.
+    "PMC13559677",  # 10 fig — microplastics/nanoplastics prognostic gene signature
+    "PMC13558434",  #  8 fig — reduced intra-frontal functional connectivity (fMRI)
+    "PMC13559462",  #  8 fig — radiomics-habitat model for preoperative prediction
+    "PMC13558819",  #  7 fig — generative chemistry platform for RNA-targeting molecules
+    "PMC13559665",  #  7 fig — Porphyromonas gingivalis prognostic value & mechanisms
+    "PMC13559783",  #  7 fig — comparative genomics: Streptomyces biosynthetic diversity
+    "PMC13560538",  #  7 fig — in vivo genome editing of CNS SIV reservoirs (gene editing)
+    "PMC13559641",  #  6 fig — m6A-related prognostic models, lung squamous carcinoma
+    "PMC13559814",  #  6 fig — nonendoscopic screening for Barrett's esophagus
+    "PMC13561219",  #  5 fig — therapeutic potential of Astragalin in Parkinson's disease
+    "PMC13559560",  #  5 fig — HALP score predicts clinical outcomes in lung cancer
+    "PMC13559591",  #  5 fig — familial adenomatous polyposis, in vitro & in vivo
+    "PMC13559439",  #  4 fig — peripheral blood biomarkers in PD-1/PD-L1 immunotherapy
+    "PMC13559656",  #  4 fig — lactate-induced epithelial-mesenchymal transition
+    "PMC13560343",  #  4 fig — remodeling the tumor immune microenvironment (crosstalk)
+    "PMC13559235",  #  4 fig — staging classification controversy in stage N3
+    "PMC13559701",  #  3 fig — chronic liver disease treatment (MASLD focus)
+    "PMC13559688",  #  3 fig — vision-language model for tactical combat casualty care
 ]
 
 

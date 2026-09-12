@@ -144,7 +144,7 @@ which have **no free tier**:
 
 1. **Lambda reserved concurrency = small** (e.g. 2) — caps parallelism and
    blast radius.
-2. **Hard daily request cap** in the app (env `DEMO_DAILY_CAP`, default
+2. **Hard daily request cap** in the app (env `CENTRALDOGMA_DEMO_DAILY_CAP`, default
    e.g. 500) — best-effort per warm container; combined with reserved
    concurrency this bounds worst-case spend. (A truly hard cross-instance
    cap would need DynamoDB — deliberately omitted to avoid another service;

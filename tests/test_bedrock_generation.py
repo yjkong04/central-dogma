@@ -30,3 +30,22 @@ def test_no_answer_becomes_refusal(monkeypatch):
     monkeypatch.setattr(gen, "_boto3_client", lambda region: _FakeClaude("NO_ANSWER"))
     g = gen.BedrockGenerator("anthropic.claude-3-5-haiku-20241022-v1:0", "us-east-1")
     assert g.generate("unrelated", [_text_citation()]) == ""
+
+def _figure_citation():
+    return Citation(modality=Modality.FIGURE, paper_id="P", source_id="P:fig1", section="Results",
+                    figure_label="Figure 1", image_uri="https://cdn.example/fig1.tif",
+                    snippet="a dose-response curve", score=0.7)
+
+def test_unsupported_figure_media_type_skips_image_block(monkeypatch):
+    # A TIFF (or any type Claude vision can't decode) must not become an
+    # image block -- it should degrade to caption-only text, not crash or
+    # get silently mislabeled as jpeg.
+    monkeypatch.setattr(gen, "_fetch_image_bytes", lambda url: (b"not-really-a-jpeg", "image/tiff"))
+    fake = _FakeClaude("The figure shows a dose-response curve [Figure 1].")
+    monkeypatch.setattr(gen, "_boto3_client", lambda region: fake)
+    g = gen.BedrockGenerator("anthropic.claude-3-5-haiku-20241022-v1:0", "us-east-1")
+    out = g.generate("what does the figure show?", [_figure_citation()])
+    assert out == "The figure shows a dose-response curve [Figure 1]."
+    content = fake.calls[0]["messages"][0]["content"]
+    assert not any(b["type"] == "image" for b in content)
+    assert any(b["type"] == "text" and "Figure 1" in b["text"] for b in content)

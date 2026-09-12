@@ -16,7 +16,7 @@ function ask(q: string) {
 describe("Page", () => {
   it("shows seeded example questions before any ask", () => {
     render(<Page />);
-    expect(screen.getByText(/what does the figure show/i)).toBeInTheDocument();
+    expect(screen.getByText(/PD-1\/PD-L1 immunotherapy/i)).toBeInTheDocument();
   });
   it("renders the answer and evidence panel on success", async () => {
     vi.spyOn(api, "ask").mockResolvedValue(answeredMarkers as AskResponse);

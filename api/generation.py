@@ -82,13 +82,23 @@ _IMG_TYPES = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
 
 
 def _fetch_image_bytes(url: str) -> tuple[bytes, str]:
-    """Fetch a figure image as raw bytes + media type. No PIL (torch-free path)."""
+    """Fetch a figure image as raw bytes + media type. No PIL (torch-free path).
+
+    Returns the actual detected media type -- from Content-Type if it names a
+    supported image type, else from the URL extension, else an empty string
+    for an unsupported/undetectable type (e.g. TIFF). Callers must not assume
+    the media type is one Claude vision can decode; see `_SUPPORTED_MEDIA`.
+    """
     req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     with urllib.request.urlopen(req, timeout=20) as resp:
         data = resp.read()
         ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip()
-    media = ctype if ctype in _IMG_TYPES.values() else _IMG_TYPES.get(url.rsplit(".", 1)[-1].lower(), "image/jpeg")
+    media = ctype if ctype in _IMG_TYPES.values() else _IMG_TYPES.get(url.rsplit(".", 1)[-1].lower(), "")
     return data, media
+
+
+# Media types Claude's vision API can decode (Bedrock InvokeModel image blocks).
+_SUPPORTED_MEDIA = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 class QwenVisionGenerator:
@@ -178,10 +188,13 @@ class BedrockGenerator:
             if c.image_uri:
                 try:
                     img, media = _fetch_image_bytes(c.image_uri)
-                    blocks.append({"type": "image", "source": {
-                        "type": "base64", "media_type": media,
-                        "data": base64.b64encode(img).decode(),
-                    }})
+                    if media in _SUPPORTED_MEDIA:
+                        blocks.append({"type": "image", "source": {
+                            "type": "base64", "media_type": media,
+                            "data": base64.b64encode(img).decode(),
+                        }})
+                    # else: unsupported/undetectable type (e.g. TIFF) -- skip
+                    # the image block, caption text already added above.
                 except Exception:
                     pass  # unreachable image: caption text already added
         blocks.append({"type": "text", "text": f"Question: {question}"})

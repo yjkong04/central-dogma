@@ -231,6 +231,10 @@ class FileVectorStore:
             if records
             else np.zeros((0, int(data["dim"])), dtype=np.float32)
         )
+        if records and matrix.shape[1] != embedder.dim:
+            raise ValueError(
+                f"corpus embedding dim {matrix.shape[1]} != embedder dim {embedder.dim}"
+            )
         return cls(records, matrix, embedder)
 
     def _search(self, query: str, k: int, modality: Modality) -> list[ScoredRecord]:

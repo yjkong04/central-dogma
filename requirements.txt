@@ -11,4 +11,4 @@ truststore==0.10.4
 psycopg[binary]==3.2.3
 pgvector==0.3.6
 numpy==2.2.1
-boto3
+boto3==1.43.91

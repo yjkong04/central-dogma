@@ -85,7 +85,8 @@ def main() -> None:
     from api.embeddings import build_embedder
 
     s = get_settings()
-    build(PMCIDS, build_embedder(s.embedder, s.embedding_model, s.embedding_dim), args.out)
+    emb_model = s.bedrock_embedding_model if s.embedder == "bedrock" else s.embedding_model
+    build(PMCIDS, build_embedder(s.embedder, emb_model, s.embedding_dim), args.out)
 
 
 if __name__ == "__main__":

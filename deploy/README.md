@@ -24,14 +24,14 @@ aws sts get-caller-identity
 
 ## 2. Enable Bedrock model access
 
-The demo calls **Anthropic Claude 3.5 Haiku** (generation) and **Amazon
+The demo calls **Anthropic Claude Haiku 4.5** (generation) and **Amazon
 Titan Text Embeddings v2** (embeddings), both in **us-east-1**. Bedrock
 model access is opt-in per account/region and is not enabled by default.
 
 In the console: **Bedrock → Model access** (us-east-1) → request/enable
 access to:
 
-- `anthropic.claude-3-5-haiku-20241022-v1:0`
+- `anthropic.claude-haiku-4-5-20251001-v1:0`
 - `amazon.titan-embed-text-v2:0`
 
 Access is usually granted instantly. If either model shows anything other
@@ -41,9 +41,9 @@ ARNs, so a deploy will succeed but calls will fail with an access-denied
 error until this step is done.
 
 Note: generation actually calls the **cross-region inference profile**
-`us.anthropic.claude-3-5-haiku-20241022-v1:0`, not the bare on-demand model
-id — Claude 3.5 Haiku requires it for on-demand invocation. Enabling model
-access for Claude 3.5 Haiku in the console (above) covers this; no separate
+`us.anthropic.claude-haiku-4-5-20251001-v1:0`, not the bare on-demand model
+id — Claude Haiku 4.5 requires it for on-demand invocation. Enabling model
+access for Claude Haiku 4.5 in the console (above) covers this; no separate
 opt-in is needed for the inference profile.
 
 ## 3. Build and commit the demo corpus
@@ -136,7 +136,7 @@ which have **no free tier**:
 - **ECR** (Lambda image) — 500 MB/mo storage free tier; image is small →
   ~$0.
 - **Bedrock** — **pay per token, no free tier.** At demo scale (small
-  retrieved context + 1–2 images per call), Claude 3.5 Haiku is on the
+  retrieved context + 1–2 images per call), Claude Haiku 4.5 is on the
   order of **a fraction of a cent per answer**; Titan embeddings are
   ~$0.00002/1k tokens. A few hundred demo answers ≈ **well under $1**.
 

@@ -19,7 +19,7 @@ def _text_citation():
 def test_generates_inline_cited_answer(monkeypatch):
     fake = _FakeClaude("Response rises then plateaus [Results].")
     monkeypatch.setattr(gen, "_boto3_client", lambda region: fake)
-    g = gen.BedrockGenerator("anthropic.claude-3-5-haiku-20241022-v1:0", "us-east-1")
+    g = gen.BedrockGenerator("anthropic.claude-haiku-4-5-20251001-v1:0", "us-east-1")
     out = g.generate("what happens with dose?", [_text_citation()])
     assert out == "Response rises then plateaus [Results]."
     body = fake.calls[0]
@@ -28,7 +28,7 @@ def test_generates_inline_cited_answer(monkeypatch):
 
 def test_no_answer_becomes_refusal(monkeypatch):
     monkeypatch.setattr(gen, "_boto3_client", lambda region: _FakeClaude("NO_ANSWER"))
-    g = gen.BedrockGenerator("anthropic.claude-3-5-haiku-20241022-v1:0", "us-east-1")
+    g = gen.BedrockGenerator("anthropic.claude-haiku-4-5-20251001-v1:0", "us-east-1")
     assert g.generate("unrelated", [_text_citation()]) == ""
 
 def _figure_citation():
@@ -43,7 +43,7 @@ def test_unsupported_figure_media_type_skips_image_block(monkeypatch):
     monkeypatch.setattr(gen, "_fetch_image_bytes", lambda url: (b"not-really-a-jpeg", "image/tiff"))
     fake = _FakeClaude("The figure shows a dose-response curve [Figure 1].")
     monkeypatch.setattr(gen, "_boto3_client", lambda region: fake)
-    g = gen.BedrockGenerator("anthropic.claude-3-5-haiku-20241022-v1:0", "us-east-1")
+    g = gen.BedrockGenerator("anthropic.claude-haiku-4-5-20251001-v1:0", "us-east-1")
     out = g.generate("what does the figure show?", [_figure_citation()])
     assert out == "The figure shows a dose-response curve [Figure 1]."
     content = fake.calls[0]["messages"][0]["content"]

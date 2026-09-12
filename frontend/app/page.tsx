@@ -9,9 +9,12 @@ import { EvidencePanel } from "@/components/EvidencePanel";
 import { StatusBanner } from "@/components/StatusBanner";
 import styles from "./page.module.css";
 
+// Seeded questions targeting the deployed demo corpus (the curated ~18 PMC papers
+// in scripts/build_demo_corpus.py). Re-tune against the real answers after a deploy dry-run.
 const EXAMPLES = [
-  "What does the figure show about dose and response?",
-  "How does the response change as the dose increases?",
+  "What peripheral blood biomarkers distinguish responders in PD-1/PD-L1 immunotherapy?",
+  "What does the m6A prognostic model show about survival in lung squamous carcinoma?",
+  "How does the radiomics-habitat model make its preoperative prediction?",
 ];
 
 export default function Page() {

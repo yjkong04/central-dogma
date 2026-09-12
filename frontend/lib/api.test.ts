@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { ask } from "./api";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 function mockFetch(body: unknown, ok = true, status = 200) {
   vi.stubGlobal(
@@ -27,7 +30,7 @@ describe("ask", () => {
       seen.push(url);
       return new Response(JSON.stringify({ answer: "hi", citations: [], status: "answered", backend: "file", confidence: 0.5, sections_covered: 0 }), { status: 200 });
     }));
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.example.aws/ask");
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.example.aws");
     await ask({ question: "hello there" });
     expect(seen[0]).toBe("https://api.example.aws/ask");
   });

@@ -4,6 +4,12 @@
 [![frontend CI](https://github.com/yjkong04/central-dogma/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/yjkong04/central-dogma/actions/workflows/frontend-ci.yml)
 [![repo](https://img.shields.io/badge/github-yjkong04%2Fcentral--dogma-blue)](https://github.com/yjkong04/central-dogma)
 
+## Live demo
+
+**[Try it live](PLACEHOLDER_CLOUDFRONT_URL)** — ask a question over ~20 real PubMed Central papers and watch each claim highlight the passage or figure it came from. Runs entirely on AWS (Lambda + Bedrock, static frontend on S3/CloudFront); the first request may take a second or two (cold start).
+
+<!-- Live demo screenshot to be added: docs/live-demo.png -->
+
 **A multimodal retrieval-augmented generation system that answers questions over scientific papers by reasoning across both text and figures — grounding every claim in a cited passage or figure. Combines vision-language reasoning (a local Qwen2.5-VL model, behind a swappable generator interface), hybrid dense retrieval over two modalities, multi-hop context assembly, and citation-level hallucination evaluation.**
 
 **Keywords:** multimodal RAG · vision-language models · hybrid retrieval · pgvector · retrieval evaluation · hallucination benchmarking · FastAPI · Next.js
@@ -69,7 +75,7 @@ Multi-paper synthesis across the whole corpus, PDF layout parsing beyond what th
 - **Frontend:** Next.js + TypeScript viewer — the grounded answer with inline citations and an evidence panel of source cards, with click-to-highlight (see [Web viewer](#web-viewer-nextjs))
 
 ## Status
-Weeks 1–6 done: the API runs on a built-in demo store with zero setup, **and** on a real corpus — PubMed Central Open Access papers ingested into pgvector, answered by dense (HNSW cosine) retrieval, multi-hop context assembly, and a local vision-language model, with citations to real passages and figures. An evaluation harness scores retrieval, groundedness, and refusal, and drives a comparison across candidate local VLMs. A **Next.js viewer** renders the grounded answer with inline citations and an evidence panel, so clicking a claim highlights the passage or figure it came from.
+Weeks 1–6 done: the API runs on a built-in demo store with zero setup, **and** on a real corpus — PubMed Central Open Access papers ingested into pgvector, answered by dense (HNSW cosine) retrieval, multi-hop context assembly, and a local vision-language model, with citations to real passages and figures. An evaluation harness scores retrieval, groundedness, and refusal, and drives a comparison across candidate local VLMs. A **Next.js viewer** renders the grounded answer with inline citations and an evidence panel, so clicking a claim highlights the passage or figure it came from. A fully-managed **live demo on AWS** (Bedrock generation/embeddings, Lambda API, static frontend on S3/CloudFront) is ready to deploy — see [Live demo](#live-demo) above.
 
 ## Quickstart
 

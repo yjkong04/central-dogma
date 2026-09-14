@@ -6,7 +6,7 @@
 
 ## Live demo
 
-**[Try it live](PLACEHOLDER_CLOUDFRONT_URL)** — ask a question over ~20 real PubMed Central papers and watch each claim highlight the passage or figure it came from. Runs entirely on AWS (Lambda + Bedrock, static frontend on S3/CloudFront); the first request may take a second or two (cold start).
+**[Try it live](https://d3kt4p4m7xhc46.cloudfront.net)** — ask a question over ~20 real PubMed Central papers and watch each claim highlight the passage or figure it came from. Runs entirely on AWS (Lambda + Bedrock, static frontend on S3/CloudFront); the first request may take a second or two (cold start).
 
 <!-- Live demo screenshot to be added: docs/live-demo.png -->
 

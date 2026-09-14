@@ -19,7 +19,6 @@ Resources:
       PackageType: Image
       Architectures:
         - arm64
-      ReservedConcurrentExecutions: 2
       Environment:
         Variables:
           CENTRALDOGMA_STORE_BACKEND: file

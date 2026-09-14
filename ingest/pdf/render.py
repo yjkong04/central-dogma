@@ -25,10 +25,15 @@ def render_pdf(path: str | Path, dpi: int = 200, max_pages: int = 40) -> list[Pa
     pages: list[Page] = []
     try:
         for i in range(min(len(doc), max_pages)):
-            page = doc[i]
-            image: Image.Image = page.render(scale=scale).to_pil().convert("RGB")
-            native = _native_text(page, scale, i)
-            pages.append(Page(index=i, image=image, native_text=native))
+            try:
+                page = doc[i]
+                image: Image.Image = page.render(scale=scale).to_pil().convert("RGB")
+                native = _native_text(page, scale, i)
+                pages.append(Page(index=i, image=image, native_text=native))
+            except PdfIngestError:
+                raise
+            except Exception as e:  # pypdfium raises assorted errors on bad pages
+                raise PdfIngestError(f"failed to process page {i} of {p}: {e}") from e
     finally:
         doc.close()
     return pages
@@ -50,7 +55,8 @@ def _native_text(page: "pdfium.PdfPage", scale: float, page_index: int) -> list[
             # to top-left pixel space
             bbox = (x0 * scale, (ph - y1) * scale, x1 * scale, (ph - y0) * scale)
             blocks.append(TextBlock(text=text, bbox=bbox, page=page_index))
-    except Exception:
+    except pdfium.PdfiumError:
+        # No usable text layer on this page: fall back to OCR upstream.
         return []
     finally:
         tp.close()

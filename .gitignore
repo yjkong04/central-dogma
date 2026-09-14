@@ -34,3 +34,6 @@ frontend/.env*
 /DEPLOY.md
 /docs/v2-design.md
 /docs/superpowers/
+
+# SAM build artifacts
+.aws-sam/

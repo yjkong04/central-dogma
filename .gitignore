@@ -16,6 +16,7 @@ venv/
 # Data / corpus (large; not committed)
 data/
 *.pdf
+!tests/fixtures/pdf/*.pdf
 *.tar.gz
 
 # Node / Next.js
@@ -37,3 +38,4 @@ frontend/.env*
 
 # SAM build artifacts
 .aws-sam/
+.venv-ingest/

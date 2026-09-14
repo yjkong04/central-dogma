@@ -19,7 +19,7 @@ from .pmc import ParsedPaper, _get
 
 _ARTICLE = "https://pmc.ncbi.nlm.nih.gov/articles"
 _CDN_IMG = re.compile(
-    r"https://cdn\.ncbi\.nlm\.nih\.gov/pmc/blobs/[^\"'\s]+?\.(?:jpg|jpeg|png|gif|tif|tiff)",
+    r"https://cdn\.ncbi\.nlm\.nih\.gov/pmc/blobs/[^\"'\s]+?\.(?:jpg|jpeg|png|gif|webp|tif|tiff)",
     re.IGNORECASE,
 )
 

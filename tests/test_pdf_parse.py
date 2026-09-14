@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from PIL import Image
-
 from ingest.chunk import chunk_paper
 from ingest.pdf.parse import parse_pdf
 from ingest.pdf.types import Region, TextBlock

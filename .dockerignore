@@ -6,3 +6,5 @@ tests/
 *.md
 .venv/
 __pycache__/
+.venv-deploy/
+.aws-sam/

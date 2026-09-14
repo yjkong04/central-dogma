@@ -21,11 +21,11 @@ def parse_pdf(path, *, ocr: Ocr | None = None, layout: LayoutDetector | None = N
               understander: FigureUnderstander | None = None,
               dpi: int = 200, max_pages: int = 40) -> ParsedPaper:
     p = Path(path)
+    if layout is None:  # pragma: no cover - requires a model checkpoint
+        raise ValueError("a LayoutDetector is required (no default checkpoint bundled)")
     if ocr is None:
         from .ocr import DoctrOcr
         ocr = DoctrOcr()
-    if layout is None:  # pragma: no cover - requires a model checkpoint
-        raise ValueError("a LayoutDetector is required (no default checkpoint bundled)")
     understander = understander or CaptionTextUnderstander()
 
     pages = render_pdf(p, dpi=dpi, max_pages=max_pages)

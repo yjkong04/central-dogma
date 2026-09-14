@@ -37,3 +37,4 @@ frontend/.env*
 
 # SAM build artifacts
 .aws-sam/
+.venv-ingest/

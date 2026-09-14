@@ -49,3 +49,40 @@ def test_caption_less_figure_still_embeddable():
                      CaptionTextUnderstander())
     assert len(paper.figures) == 1
     assert paper.figures[0].caption  # non-empty fallback ("figure")
+
+
+def test_two_figures_get_distinct_nearest_captions_above_and_below():
+    # Page tall enough that the 0.15*height threshold (45) is generous but the
+    # cross-distances (30) are still inside it -- so correctness depends on
+    # picking the *nearest* unclaimed caption, not just "any caption in range".
+    pages = [_page(w=100, h=300)]
+    regions = [
+        Region("figure", (0, 10, 100, 60), 0),
+        Region("caption", (0, 62, 100, 70), 0),   # belongs to the figure (below)
+        Region("caption", (0, 90, 100, 98), 0),   # belongs to the table (above)
+        Region("table", (0, 100, 100, 150), 0),
+    ]
+    text = [
+        _tb("Figure 1. Plot A.", 62, 70),
+        _tb("Table 1. Stats.", 90, 98),
+    ]
+    paper = assemble("pdf-abc", None, pages, {0: text}, {0: regions},
+                     CaptionTextUnderstander())
+    assert len(paper.figures) == 2
+    fig, table = paper.figures
+    assert fig.caption == "Figure 1. Plot A." and fig.label == "Figure 1"
+    assert table.caption == "Table 1. Stats." and table.label == "Table 1"
+
+
+def test_leading_text_before_any_title_gets_untitled_section():
+    pages = [_page()]
+    regions = [Region("text", (0, 0, 100, 10), 0),
+               Region("title", (0, 20, 100, 30), 0),
+               Region("text", (0, 30, 100, 40), 0)]
+    text = [_tb("Leading para.", 0, 10), _tb("Heading", 20, 30), _tb("Body.", 30, 40)]
+    paper = assemble("pdf-abc", None, pages, {0: text}, {0: regions},
+                     CaptionTextUnderstander())
+    assert paper.sections[0].title is None
+    assert "Leading para." in paper.sections[0].text
+    assert paper.sections[1].title == "Heading"
+    assert "Body." in paper.sections[1].text

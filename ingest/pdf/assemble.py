@@ -30,6 +30,42 @@ def _blocks_in(region: Region, blocks: list[TextBlock]) -> list[TextBlock]:
     return out
 
 
+def _text_of(region: Region, blocks: list[TextBlock]) -> str:
+    return " ".join(b.text for b in _blocks_in(region, blocks)).strip()
+
+
+def _vertical_gap(a: Region, b: Region) -> float:
+    """Vertical gap between two regions; 0 if they overlap vertically."""
+    ay0, ay1 = a.bbox[1], a.bbox[3]
+    by0, by1 = b.bbox[1], b.bbox[3]
+    if by0 >= ay1:
+        return by0 - ay1
+    if by1 <= ay0:
+        return ay0 - by1
+    return 0.0
+
+
+def _nearest_caption(region: Region, regions: list[Region], claimed: set[int],
+                      threshold: float) -> Region | None:
+    """The unclaimed caption region with the smallest vertical gap to `region`.
+
+    Considers captions both above and below (table captions are often above),
+    and excludes captions already claimed by an earlier figure/table on the
+    same page so one caption is never attached to two figures.
+    """
+    best: Region | None = None
+    best_gap = None
+    for r in regions:
+        if r.kind != "caption" or id(r) in claimed:
+            continue
+        gap = _vertical_gap(region, r)
+        if gap > threshold:
+            continue
+        if best_gap is None or gap < best_gap:
+            best, best_gap = r, gap
+    return best
+
+
 def _crop_png(image: Image.Image, bbox: Region) -> bytes:
     x0, y0, x1, y1 = (int(v) for v in bbox.bbox)
     x0, y0 = max(0, x0), max(0, y0)
@@ -58,24 +94,27 @@ def assemble(paper_id: str, title: str | None, pages: list[Page],
     for page in sorted(pages, key=lambda p: p.index):
         regions = sorted(regions_by_page.get(page.index, []), key=lambda r: r.bbox[1])
         blocks = text_by_page.get(page.index, [])
+        claimed_captions: set[int] = set()
         for region in regions:
             if region.kind in ("figure", "table"):
                 crop = _crop_png(page.image, region)
-                cap_regions = [r for r in regions if r.kind == "caption"
-                               and abs(r.bbox[1] - region.bbox[3]) < page.image.height * 0.15]
-                caption = ""
-                if cap_regions:
-                    caption = " ".join(b.text for b in _blocks_in(cap_regions[0], blocks)).strip()
+                threshold = page.image.height * 0.15
+                cap_region = _nearest_caption(region, regions, claimed_captions, threshold)
+                raw_caption = ""
+                if cap_region is not None:
+                    raw_caption = _text_of(cap_region, blocks)
+                    claimed_captions.add(id(cap_region))
+                label = _label_from(raw_caption)
                 caption = understander.describe(
-                    Image.open(io.BytesIO(crop)), caption) or caption or "figure"
+                    Image.open(io.BytesIO(crop)), raw_caption) or raw_caption or "figure"
                 figures.append(Figure(
-                    label=_label_from(caption), caption=caption, image_bytes=crop))
+                    label=label, caption=caption, image_bytes=crop))
             elif region.kind == "title":
-                heading = " ".join(b.text for b in _blocks_in(region, blocks)).strip()
+                heading = _text_of(region, blocks)
                 current = Section(title=heading or None, text="")
                 sections.append(current)
             elif region.kind in ("text", "list"):
-                body = " ".join(b.text for b in _blocks_in(region, blocks)).strip()
+                body = _text_of(region, blocks)
                 if not body:
                     continue
                 if current is None:

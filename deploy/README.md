@@ -162,16 +162,21 @@ this stack keeps Bedrock with the caps above. This is the one place
 
 ## Aurora vector store (sub-project 2)
 
-First deploy provisions an auto-pausing Aurora Serverless v2 cluster (Data API, min 0 ACU).
-Before the app can serve from it, migrate + seed, THEN it's live:
+First deploy provisions an auto-pausing Aurora Serverless v2 cluster (Data API, min 0 ACU),
+but the app is deployed with `StoreBackend=file` (the default) so it never serves from an
+empty schema. Cut over to Aurora only after the schema is migrated and seeded:
 
-1. `sam deploy ...` (creates the cluster + secret; the function is already set to STORE_BACKEND=aurora)
+1. `sam deploy ...` (creates the cluster + secret; the function serves `StoreBackend=file`
+   — the default — until you explicitly cut over below)
 2. `python -m scripts.db_migrate`            # create extension + tables + HNSW indexes
 3. `python -m scripts.seed_aurora`           # load the 18-paper demo corpus
-4. Verify `/ask` returns a grounded answer.
+4. `sam deploy --parameter-overrides StoreBackend=aurora`   # cut over the function
+5. Verify `/ask` returns a grounded answer.
 
-Rollback: set `CENTRALDOGMA_STORE_BACKEND=file` on the function to instantly revert to the
-baked 18-paper demo. First query after idle incurs a ~10-15s Aurora resume (auto-pause).
+Rollback: `sam deploy --parameter-overrides StoreBackend=file` to instantly revert to the
+baked 18-paper demo. First query after idle incurs a ~10-15s Aurora resume (auto-pause) —
+the API retries through it and returns a normal answer; if the cluster is still resuming
+after retries are exhausted, `/ask` returns `503` (retry shortly) instead of a raw 500.
 
 ## Tearing it down
 

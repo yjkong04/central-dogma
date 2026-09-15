@@ -82,6 +82,72 @@ class AuroraVectorStore:
             for r in rows
         ]
 
+    def _tx_args(self, tx):
+        return dict(resourceArn=self._cluster_arn, secretArn=self._secret_arn,
+                    database=self._database, transactionId=tx)
+
+    def upsert_paper(self, paper_id: str, text_records: list[dict],
+                     figure_records: list[dict]) -> None:
+        tx = self._rds.begin_transaction(
+            resourceArn=self._cluster_arn, secretArn=self._secret_arn,
+            database=self._database)["transactionId"]
+        try:
+            for table in ("text_chunks", "figures"):
+                self._rds.execute_statement(
+                    sql=f"DELETE FROM {table} WHERE paper_id = :pid",
+                    parameters=[{"name": "pid", "value": {"stringValue": paper_id}}],
+                    **self._tx_args(tx))
+            if text_records:
+                self._rds.batch_execute_statement(
+                    sql=("INSERT INTO text_chunks "
+                         "(chunk_id, paper_id, section, content, embedding) VALUES "
+                         "(:chunk_id, :paper_id, :section, :content, :emb::vector)"),
+                    parameterSets=[self._text_params(paper_id, r) for r in text_records],
+                    **self._tx_args(tx))
+            if figure_records:
+                self._rds.batch_execute_statement(
+                    sql=("INSERT INTO figures "
+                         "(figure_id, paper_id, section, figure_label, caption, "
+                         "image_uri, caption_embedding) VALUES "
+                         "(:figure_id, :paper_id, :section, :figure_label, :caption, "
+                         ":image_uri, :emb::vector)"),
+                    parameterSets=[self._fig_params(paper_id, r) for r in figure_records],
+                    **self._tx_args(tx))
+            self._rds.commit_transaction(
+                resourceArn=self._cluster_arn, secretArn=self._secret_arn,
+                transactionId=tx)
+        except Exception:
+            self._rds.rollback_transaction(
+                resourceArn=self._cluster_arn, secretArn=self._secret_arn,
+                transactionId=tx)
+            raise
+
+    @staticmethod
+    def _nullable(name, value):
+        if value is None:
+            return {"name": name, "value": {"isNull": True}}
+        return {"name": name, "value": {"stringValue": str(value)}}
+
+    def _text_params(self, paper_id, r):
+        return [
+            {"name": "chunk_id", "value": {"stringValue": r["source_id"]}},
+            {"name": "paper_id", "value": {"stringValue": paper_id}},
+            self._nullable("section", r.get("section")),
+            {"name": "content", "value": {"stringValue": r.get("content", r.get("text", ""))}},
+            {"name": "emb", "value": {"stringValue": _vec_literal(r["embedding"])}},
+        ]
+
+    def _fig_params(self, paper_id, r):
+        return [
+            {"name": "figure_id", "value": {"stringValue": r["source_id"]}},
+            {"name": "paper_id", "value": {"stringValue": paper_id}},
+            self._nullable("section", r.get("section")),
+            self._nullable("figure_label", r.get("figure_label")),
+            {"name": "caption", "value": {"stringValue": r.get("content", r.get("text", ""))}},
+            self._nullable("image_uri", r.get("image_uri")),
+            {"name": "emb", "value": {"stringValue": _vec_literal(r["embedding"])}},
+        ]
+
     def search_figures(self, query: str, k: int,
                        paper_ids: list[str] | None = None) -> list[ScoredRecord]:
         if k <= 0 or paper_ids == []:

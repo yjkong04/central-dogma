@@ -6,6 +6,10 @@ Parameters:
   AllowedOrigin:
     Type: String
     Default: "*"
+  StoreBackend:
+    Type: String
+    Default: file
+    AllowedValues: [file, aurora, demo, pgvector]
 
 Globals:
   Function:
@@ -21,12 +25,15 @@ Resources:
         - arm64
       Environment:
         Variables:
-          CENTRALDOGMA_STORE_BACKEND: file
+          CENTRALDOGMA_STORE_BACKEND: !Ref StoreBackend
           CENTRALDOGMA_EMBEDDER: bedrock
           CENTRALDOGMA_EMBEDDING_DIM: "1024"
           CENTRALDOGMA_GENERATOR: bedrock
           CENTRALDOGMA_ALLOWED_ORIGINS: !Ref AllowedOrigin
           CENTRALDOGMA_AWS_REGION: !Ref AWS::Region
+          CENTRALDOGMA_AURORA_CLUSTER_ARN: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+          CENTRALDOGMA_AURORA_SECRET_ARN: !Ref DbSecret
+          CENTRALDOGMA_AURORA_DATABASE: centraldogma
       Policies:
         - Statement:
             - Effect: Allow
@@ -35,12 +42,55 @@ Resources:
                 - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
                 - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
                 - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+        - Statement:
+            - Effect: Allow
+              Action: [rds-data:ExecuteStatement, rds-data:BatchExecuteStatement,
+                       rds-data:BeginTransaction, rds-data:CommitTransaction,
+                       rds-data:RollbackTransaction]
+              Resource: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref DbSecret
       FunctionUrlConfig:
         AuthType: NONE
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ..
       DockerTag: latest
+
+  DbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Central Dogma Aurora master credentials
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"centraldogma"}'
+        GenerateStringKey: password
+        ExcludePunctuation: true
+        PasswordLength: 24
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: "16.9"
+      DatabaseName: centraldogma
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:password}}'
+      EnableHttpEndpoint: true          # RDS Data API
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0                   # auto-pause to zero
+        MaxCapacity: 1
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
 
   SiteBucket:
     Type: AWS::S3::Bucket
@@ -104,3 +154,7 @@ Outputs:
     Value: !Sub "https://${SiteDistribution.DomainName}"
   SiteDistributionId:
     Value: !Ref SiteDistribution
+  AuroraClusterArn:
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+  AuroraSecretArn:
+    Value: !Ref DbSecret

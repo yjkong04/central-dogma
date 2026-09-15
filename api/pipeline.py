@@ -44,8 +44,9 @@ def answer_question(req: AskRequest, store: Store, generator: Generator) -> AskR
 
     # Retrieve a larger pool than we'll keep, so the assembler has something to
     # diversify across sections (multi-hop coverage).
-    text_hits = store.search_text(req.question, req.top_k_text * mult)
-    figure_hits = store.search_figures(req.question, req.top_k_figures * mult)
+    paper_ids = [req.paper_id] if req.paper_id else None
+    text_hits = store.search_text(req.question, req.top_k_text * mult, paper_ids)
+    figure_hits = store.search_figures(req.question, req.top_k_figures * mult, paper_ids)
     candidates = [_to_citation(s) for s in (*text_hits, *figure_hits)]
     candidates.sort(key=lambda c: c.score, reverse=True)
 

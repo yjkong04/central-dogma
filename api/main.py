@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .generation import Generator, build_generator
@@ -14,12 +15,21 @@ from .pipeline import answer_question
 from .ratelimit import DailyCapMiddleware
 from .schemas import AskRequest, AskResponse
 from .store import DemoStore, PgVectorStore, Store
+from .store_aurora import StoreUnavailable
 
 app = FastAPI(
     title="Central Dogma",
     version="0.1.0",
     description="Multi-modal RAG over scientific papers: cited answers over text and figures.",
 )
+
+
+@app.exception_handler(StoreUnavailable)
+async def _store_unavailable_handler(request, exc):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc) or "vector store is warming up; please retry shortly"},
+    )
 
 
 def _build_embedder():

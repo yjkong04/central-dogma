@@ -7,6 +7,7 @@ Bedrock egress. Query vectors are passed as cast string params (:qvec::vector).
 from __future__ import annotations
 
 import json
+import time
 from typing import TYPE_CHECKING
 
 from .schemas import Modality
@@ -14,6 +15,15 @@ from .store import Record, ScoredRecord
 
 if TYPE_CHECKING:
     from .embeddings import Embedder
+
+
+# Overridable in tests so retry backoff doesn't actually sleep.
+_SLEEP = time.sleep
+_MAX_RESUME_RETRIES = 5
+
+
+class StoreUnavailable(Exception):
+    """Raised when the Aurora cluster is resuming and retries are exhausted."""
 
 
 def _client(region: str | None = None):
@@ -25,6 +35,19 @@ def _vec_literal(vec) -> str:
     return "[" + ",".join(f"{float(x):.6f}" for x in vec) + "]"
 
 
+def _is_resuming_error(e: "Exception") -> bool:
+    from botocore.exceptions import ClientError
+
+    if not isinstance(e, ClientError):
+        return False
+    error = e.response.get("Error", {})
+    if error.get("Code") == "DatabaseResumingException":
+        return True
+    if error.get("Code") == "BadRequestException" and "resuming" in error.get("Message", "").lower():
+        return True
+    return False
+
+
 class AuroraVectorStore:
     def __init__(self, cluster_arn: str, secret_arn: str, database: str,
                  embedder: "Embedder", dim: int = 1024, region: str | None = None) -> None:
@@ -33,14 +56,34 @@ class AuroraVectorStore:
         self._database = database
         self._embedder = embedder
         self._dim = dim
+        if getattr(embedder, "dim", dim) != dim:
+            raise ValueError(
+                f"embedder dim {getattr(embedder, 'dim', None)} != store dim {dim}"
+            )
         self._rds = _client(region)
+
+    def _call_with_resume_retry(self, fn, **kwargs):
+        attempt = 0
+        while True:
+            try:
+                return fn(**kwargs)
+            except Exception as e:  # noqa: BLE001 - re-raised as StoreUnavailable or reraised
+                if not _is_resuming_error(e):
+                    raise
+                attempt += 1
+                if attempt > _MAX_RESUME_RETRIES:
+                    raise StoreUnavailable(
+                        "Aurora cluster is resuming; retries exhausted"
+                    ) from e
+                _SLEEP(min(0.5 * attempt, 5.0))
 
     @property
     def name(self) -> str:
         return "aurora"
 
     def _execute(self, sql: str, params: list[dict]):
-        resp = self._rds.execute_statement(
+        resp = self._call_with_resume_retry(
+            self._rds.execute_statement,
             resourceArn=self._cluster_arn, secretArn=self._secret_arn,
             database=self._database, sql=sql, parameters=params,
             formatRecordsAs="JSON")
@@ -88,7 +131,8 @@ class AuroraVectorStore:
 
     def upsert_paper(self, paper_id: str, text_records: list[dict],
                      figure_records: list[dict]) -> None:
-        tx = self._rds.begin_transaction(
+        tx = self._call_with_resume_retry(
+            self._rds.begin_transaction,
             resourceArn=self._cluster_arn, secretArn=self._secret_arn,
             database=self._database)["transactionId"]
         try:

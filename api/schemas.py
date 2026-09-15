@@ -40,6 +40,7 @@ class AskRequest(BaseModel):
     question: str = Field(..., min_length=3, description="Natural-language question over the corpus")
     top_k_text: int = Field(4, ge=0, le=20)
     top_k_figures: int = Field(2, ge=0, le=10)
+    paper_id: str | None = Field(default=None, description="Restrict retrieval to one paper (optional)")
 
 
 class AskResponse(BaseModel):

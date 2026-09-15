@@ -13,10 +13,10 @@ class FakeStore:
     def __init__(self, records):
         self._records = records
 
-    def search_text(self, query, k):
+    def search_text(self, query, k, paper_ids=None):
         return self._records[:k]
 
-    def search_figures(self, query, k):
+    def search_figures(self, query, k, paper_ids=None):
         return []
 
 

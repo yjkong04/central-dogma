@@ -22,31 +22,42 @@ app = FastAPI(
 )
 
 
+def _build_embedder():
+    from .embeddings import build_embedder
+
+    settings = get_settings()
+    _emb_model = (
+        settings.bedrock_embedding_model
+        if settings.embedder == "bedrock"
+        else settings.embedding_model
+    )
+    return build_embedder(settings.embedder, _emb_model, settings.embedding_dim)
+
+
 def _build_store() -> Store:
     settings = get_settings()
     if settings.store_backend == "demo":
         return DemoStore()
     if settings.store_backend == "pgvector":
-        from .embeddings import build_embedder
-
-        _emb_model = (
-            settings.bedrock_embedding_model
-            if settings.embedder == "bedrock"
-            else settings.embedding_model
-        )
-        embedder = build_embedder(settings.embedder, _emb_model, settings.embedding_dim)
+        embedder = _build_embedder()
         return PgVectorStore(settings.database_url, embedder)
     if settings.store_backend == "file":
-        from .embeddings import build_embedder
         from .store import FileVectorStore
 
-        _emb_model = (
-            settings.bedrock_embedding_model
-            if settings.embedder == "bedrock"
-            else settings.embedding_model
-        )
-        embedder = build_embedder(settings.embedder, _emb_model, settings.embedding_dim)
+        embedder = _build_embedder()
         return FileVectorStore.from_file(settings.demo_corpus_path, embedder)
+    if settings.store_backend == "aurora":
+        from .store_aurora import AuroraVectorStore
+
+        embedder = _build_embedder()
+        return AuroraVectorStore(
+            settings.aurora_cluster_arn,
+            settings.aurora_secret_arn,
+            settings.aurora_database,
+            embedder,
+            dim=settings.embedding_dim,
+            region=settings.aws_region,
+        )
     raise RuntimeError(f"unknown store_backend={settings.store_backend!r}")
 
 

@@ -92,3 +92,12 @@ def test_invalid_zip_marks_batch_failed_and_sends_nothing(wired, monkeypatch):
     assert store.failed and store.failed[0][0] == "B3"
     assert sqs.sent == [] and s3.puts == []
     assert store.totals == []
+
+
+def test_corrupt_zip_marks_batch_failed_and_sends_nothing(wired, monkeypatch):
+    store, sqs = wired
+    s3 = FakeS3(b"not a zip")
+    monkeypatch.setattr(disp, "_s3", lambda: s3)
+    disp.handler(_event("uploads/BX.zip"), None)
+    assert store.failed and store.failed[0][0] == "BX"
+    assert sqs.sent == [] and s3.puts == []

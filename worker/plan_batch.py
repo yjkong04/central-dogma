@@ -39,6 +39,10 @@ class EmptyBatch(PlanError):
     pass
 
 
+class InvalidArchive(PlanError):
+    pass
+
+
 def _check_size(name: str, data: bytes, max_pdf_mb: int) -> None:
     if len(data) > max_pdf_mb * 1_048_576:
         raise PdfTooLarge(f"{name} exceeds {max_pdf_mb} MB")
@@ -51,7 +55,11 @@ def plan_batch(data: bytes, kind: str, limits: PlanLimits) -> list[PlanEntry]:
 
     # kind == "zip"
     entries: list[PlanEntry] = []
-    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+    try:
+        zf_ctx = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        raise InvalidArchive("not a readable zip archive")
+    with zf_ctx as zf:
         pdf_names = [
             n for n in zf.namelist()
             if not n.endswith("/") and n.lower().endswith(".pdf")
@@ -61,6 +69,8 @@ def plan_batch(data: bytes, kind: str, limits: PlanLimits) -> list[PlanEntry]:
                 f"{len(pdf_names)} PDFs exceeds max {limits.max_pdfs_per_zip}"
             )
         for name in pdf_names:
+            if zf.getinfo(name).file_size > limits.max_pdf_mb * 1_048_576:
+                raise PdfTooLarge(f"{name} exceeds {limits.max_pdf_mb} MB")
             body = zf.read(name)
             _check_size(name, body, limits.max_pdf_mb)
             entries.append(PlanEntry(filename=name, data=body))

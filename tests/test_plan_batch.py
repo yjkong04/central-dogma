@@ -5,7 +5,7 @@ import pytest
 
 from worker.plan_batch import (
     PlanEntry, PlanLimits, plan_batch,
-    BatchTooLarge, PdfTooLarge, EmptyBatch,
+    BatchTooLarge, PdfTooLarge, EmptyBatch, InvalidArchive, PlanError,
 )
 
 LIMITS = PlanLimits(max_pdfs_per_zip=3, max_pdf_mb=1)
@@ -58,3 +58,10 @@ def test_empty_or_no_pdf_zip_raises():
         plan_batch(_zip({"readme.txt": b"x"}), "zip", LIMITS)
     with pytest.raises(EmptyBatch):
         plan_batch(_zip({}), "zip", LIMITS)
+
+
+def test_corrupt_zip_raises_invalid_archive():
+    with pytest.raises(PlanError) as exc_info:
+        plan_batch(b"this is not a zip", "zip", LIMITS)
+    assert isinstance(exc_info.value, InvalidArchive)
+    assert isinstance(exc_info.value, PlanError)

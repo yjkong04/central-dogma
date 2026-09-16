@@ -133,10 +133,10 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: [s3:GetObject]
-              Resource: !Sub "${UploadsBucket.Arn}/uploads/*"
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/uploads/*"
             - Effect: Allow
               Action: [s3:PutObject]
-              Resource: !Sub "${UploadsBucket.Arn}/papers/*"
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/papers/*"
         - SQSSendMessagePolicy:
             QueueName: !GetAtt IngestQueue.QueueName
       Events:
@@ -154,6 +154,7 @@ Resources:
   UploadsBucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
       LifecycleConfiguration:
         Rules:
           - Id: expire-uploads

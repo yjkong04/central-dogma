@@ -39,3 +39,6 @@ frontend/.env*
 .aws-sam/
 .venv-ingest/
 .venv-deploy/
+
+# Claude Code agent worktrees (local isolation, never commit)
+.claude/worktrees/

@@ -17,4 +17,4 @@ def test_batch_status_shape():
                             papers=[PaperState(paper_id="A", filename="a.pdf", state="done")])
     assert r.papers[0].error is None
     assert UploadResponse(batch_id="b1",
-                          upload=PresignedPost(url="https://s3", fields={"key": "uploads/b1.zip"})).upload.fields["key"]
+                          upload=PresignedPost(url="https://s3", fields={"key": "uploads/b1.zip"})).upload.fields["key"] == "uploads/b1.zip"

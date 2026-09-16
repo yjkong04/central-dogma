@@ -36,6 +36,9 @@ def create_batch(filename: str, kind: str, *, now: datetime) -> dict:
     settings = get_settings()
     day = now.strftime("%Y-%m-%d")
     ttl_epoch = int((now + timedelta(days=2)).timestamp())
+    # Cap counts upload REQUESTS, not stored objects — the slot is consumed here
+    # before the client is guaranteed to POST the object (a benign over-count for
+    # an anonymous-demo guardrail; 3b must not assume the counter equals stored batches).
     if not status_store.reserve_upload_slot(day, settings.upload_daily_cap, ttl_epoch):
         raise UploadCapReached("daily upload limit reached — try again tomorrow")
 

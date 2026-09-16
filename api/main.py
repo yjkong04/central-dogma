@@ -5,6 +5,7 @@ Run: uvicorn api.main:app --reload
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
@@ -21,6 +22,8 @@ from .store import DemoStore, PgVectorStore, Store
 from .store_aurora import StoreUnavailable
 from . import uploads
 from .uploads import UploadCapReached, BatchNotFound
+
+logger = logging.getLogger("centraldogma.api")
 
 app = FastAPI(
     title="Central Dogma",
@@ -49,7 +52,9 @@ async def _batch_not_found_handler(request, exc):
 
 @app.exception_handler(ClientError)
 async def _aws_client_error_handler(request, exc):
-    # A DynamoDB/S3 outage or throttle degrades to 503 rather than a 500.
+    # App-wide: also covers /ask. A boto3 fault degrades to 503 (not 500);
+    # log it so a real IAM/config error isn't silently masked as "transient".
+    logger.exception("AWS ClientError on %s", request.url.path)
     return JSONResponse(status_code=503, content={"detail": "storage temporarily unavailable; retry shortly"})
 
 

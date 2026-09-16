@@ -41,8 +41,10 @@ class ScoredRecord:
 
 
 class Store(Protocol):
-    def search_text(self, query: str, k: int) -> list[ScoredRecord]: ...
-    def search_figures(self, query: str, k: int) -> list[ScoredRecord]: ...
+    def search_text(self, query: str, k: int,
+                    paper_ids: list[str] | None = None) -> list[ScoredRecord]: ...
+    def search_figures(self, query: str, k: int,
+                       paper_ids: list[str] | None = None) -> list[ScoredRecord]: ...
     @property
     def name(self) -> str: ...
 
@@ -87,21 +89,27 @@ class DemoStore:
         if not self.records:
             self.records = _demo_records()
 
-    def _search(self, query: str, k: int, modality: Modality) -> list[ScoredRecord]:
+    def _search(self, query: str, k: int, modality: Modality,
+                paper_ids: list[str] | None = None) -> list[ScoredRecord]:
+        records = self.records if paper_ids is None else [
+            r for r in self.records if r.paper_id in set(paper_ids)
+        ]
         scored = [
             ScoredRecord(r, _overlap_score(query, r.text))
-            for r in self.records
+            for r in records
             if r.modality == modality
         ]
         scored = [s for s in scored if s.score > 0]
         scored.sort(key=lambda s: s.score, reverse=True)
         return scored[:k]
 
-    def search_text(self, query: str, k: int) -> list[ScoredRecord]:
-        return self._search(query, k, Modality.TEXT)
+    def search_text(self, query: str, k: int,
+                    paper_ids: list[str] | None = None) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.TEXT, paper_ids)
 
-    def search_figures(self, query: str, k: int) -> list[ScoredRecord]:
-        return self._search(query, k, Modality.FIGURE)
+    def search_figures(self, query: str, k: int,
+                       paper_ids: list[str] | None = None) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.FIGURE, paper_ids)
 
 
 class PgVectorStore:
@@ -127,9 +135,11 @@ class PgVectorStore:
     def _embed_query(self, query: str):
         return self._embedder.embed([query])[0]
 
-    def search_text(self, query: str, k: int) -> list[ScoredRecord]:
+    def search_text(self, query: str, k: int,
+                    paper_ids: list[str] | None = None) -> list[ScoredRecord]:
         if k <= 0:
             return []
+        # paper_ids filtering: Aurora backend is the production path (SP2)
         vec = self._embed_query(query)
         rows = self._conn.execute(
             """
@@ -156,9 +166,11 @@ class PgVectorStore:
             for chunk_id, paper_id, section, content, score in rows
         ]
 
-    def search_figures(self, query: str, k: int) -> list[ScoredRecord]:
+    def search_figures(self, query: str, k: int,
+                       paper_ids: list[str] | None = None) -> list[ScoredRecord]:
         if k <= 0:
             return []
+        # paper_ids filtering: Aurora backend is the production path (SP2)
         vec = self._embed_query(query)
         rows = self._conn.execute(
             """
@@ -237,25 +249,35 @@ class FileVectorStore:
             )
         return cls(records, matrix, embedder)
 
-    def _search(self, query: str, k: int, modality: Modality) -> list[ScoredRecord]:
+    def _search(self, query: str, k: int, modality: Modality,
+                paper_ids: list[str] | None = None) -> list[ScoredRecord]:
         if k <= 0 or not self._records:
             return []
+        if paper_ids is not None and not paper_ids:
+            return []
+        allowed = None if paper_ids is None else set(paper_ids)
         q = self._embedder.embed([query])[0]
         scores = self._matrix @ q
         order = np.argsort(-scores)
         hits: list[ScoredRecord] = []
         for i in order:
-            if self._records[i].modality == modality:
-                hits.append(ScoredRecord(self._records[i], float(scores[i])))
-                if len(hits) == k:
-                    break
+            record = self._records[i]
+            if record.modality != modality:
+                continue
+            if allowed is not None and record.paper_id not in allowed:
+                continue
+            hits.append(ScoredRecord(record, float(scores[i])))
+            if len(hits) == k:
+                break
         return hits
 
-    def search_text(self, query: str, k: int) -> list[ScoredRecord]:
-        return self._search(query, k, Modality.TEXT)
+    def search_text(self, query: str, k: int,
+                    paper_ids: list[str] | None = None) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.TEXT, paper_ids)
 
-    def search_figures(self, query: str, k: int) -> list[ScoredRecord]:
-        return self._search(query, k, Modality.FIGURE)
+    def search_figures(self, query: str, k: int,
+                       paper_ids: list[str] | None = None) -> list[ScoredRecord]:
+        return self._search(query, k, Modality.FIGURE, paper_ids)
 
 
 def _demo_records() -> list[Record]:

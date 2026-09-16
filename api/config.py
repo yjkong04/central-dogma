@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     allowed_origins: str = "*"  # comma-separated CORS origins for the public demo
     demo_daily_cap: int = 500   # best-effort per-container /ask cap
 
+    # Aurora Serverless v2 + pgvector via the RDS Data API (Week 2 serverless variant).
+    aurora_cluster_arn: str = ""
+    aurora_secret_arn: str = ""
+    aurora_database: str = "centraldogma"
+
 
 @lru_cache
 def get_settings() -> Settings:

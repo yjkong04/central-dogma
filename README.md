@@ -181,5 +181,8 @@ undefined for it; it is judged by citation precision/recall instead. Adding a
 candidate VLM is a one-line `GeneratorSpec` once its `Generator` subclass is
 registered in `api/generation.py`.
 
+The demo can also run on a growable Aurora+pgvector store (Data API, scale-to-zero)
+by setting `CENTRALDOGMA_STORE_BACKEND=aurora`; see `deploy/README.md`.
+
 ## License
 MIT

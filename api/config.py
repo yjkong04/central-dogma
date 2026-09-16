@@ -54,6 +54,19 @@ class Settings(BaseSettings):
     aurora_secret_arn: str = ""
     aurora_database: str = "centraldogma"
 
+    # Async ingestion (SP3). Uploads land in uploads_bucket via presigned POST;
+    # batch/paper status + the durable daily cap live in DynamoDB.
+    uploads_bucket: str = ""
+    batches_table: str = "centraldogma-batches"
+    papers_table: str = "centraldogma-papers"
+    figures_bucket: str = ""
+    figures_base_url: str = ""  # CloudFront/S3 base for stored figure crops (3b)
+    max_zip_mb: int = 25
+    max_pdfs_per_zip: int = 20   # enforced by 3b's dispatcher; defined here so it inherits
+    max_pdf_mb: int = 20
+    upload_daily_cap: int = 50
+    upload_url_ttl_s: int = 900
+
 
 @lru_cache
 def get_settings() -> Settings:

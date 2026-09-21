@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     upload_daily_cap: int = 50
     upload_url_ttl_s: int = 900
     uploads_queue_url: str = ""  # SQS main queue the dispatcher fans PDFs onto (SP3b)
+    layout_checkpoint_path: str = "/opt/models/layout.pt"  # baked doc-layout checkpoint (SP3b-ii worker)
 
 
 @lru_cache

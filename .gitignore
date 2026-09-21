@@ -41,5 +41,8 @@ frontend/.env*
 .venv-ingest/
 .venv-deploy/
 
+# Baked model checkpoints (fetched, not committed; Dockerfile.worker COPYs from here)
+/models/
+
 # Claude Code agent worktrees (local isolation, never commit)
 .claude/worktrees/

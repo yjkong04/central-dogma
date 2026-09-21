@@ -5,4 +5,8 @@ pypdfium2==4.30.0
 Pillow==11.0.0
 numpy==2.2.1
 python-doctr[torch]==0.10.0
-ultralytics==8.3.0
+# 8.3.0 pins numpy<2.0.0, conflicting with the numpy==2.2.1 pin above (shared
+# with requirements.txt). 8.3.203 drops that upper bound for the base install
+# (kept only for the unused "export" extra) -- same public YOLO(...).predict()
+# API, no code change needed.
+ultralytics==8.3.203

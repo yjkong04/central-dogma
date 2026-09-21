@@ -34,13 +34,25 @@ class FakeTable:
         vals = ExpressionAttributeValues or {}
         # emulate the cap: "SET #t = if_not_exists(#t, :ttl) ADD #n :one" with
         # ConditionExpression "attribute_not_exists(#n) OR #n < :cap"
-        if ConditionExpression is not None:
+        if ConditionExpression is not None and ":cap" in vals:
             n = item.get("n")
             cap = vals[":cap"]
             if not (n is None or n < cap):
                 raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem")
             item["n"] = (n or 0) + vals[":one"]
             item.setdefault("ttl", vals[":ttl"])
+        elif ConditionExpression is not None and ":done" in vals and ":failed" in vals:
+            # emulate mark_paper's terminal-state guard:
+            # "attribute_not_exists(#s) OR (#s <> :done AND #s <> :failed)"
+            cur = item.get("state")
+            if cur is not None and cur in (vals[":done"], vals[":failed"]):
+                raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem")
+            for token, val in vals.items():
+                attr = token.lstrip(":")
+                if attr == "state":
+                    item["state"] = val
+                elif attr == "error":
+                    item["error"] = val
         else:
             # counter bumps: ADD done :d, failed :f (both ints)  /  SET state, error, total (mixed types)
             for token, val in vals.items():
@@ -105,6 +117,21 @@ def test_bump_counters_and_mark_paper(tables):
     ss.mark_paper("b1", "A", "failed", error="boom")
     assert papers.items[("b1", "A")]["state"] == "failed"
     assert papers.items[("b1", "A")]["error"] == "boom"
+
+
+def test_mark_paper_is_idempotent_after_terminal_state(tables):
+    batches, papers = tables
+    ss.put_batch("b1", created_at="t")
+    ss.put_paper("b1", "A", "a.pdf")
+    assert ss.mark_paper("b1", "A", "done") is True
+    assert papers.items[("b1", "A")]["state"] == "done"
+    # simulated SQS redelivery re-runs the same terminal transition: no-op
+    assert ss.mark_paper("b1", "A", "done") is False
+    assert papers.items[("b1", "A")]["state"] == "done"
+    # and a "failed" mark after "done" is also rejected -- state doesn't flip
+    assert ss.mark_paper("b1", "A", "failed", error="boom") is False
+    assert papers.items[("b1", "A")]["state"] == "done"
+    assert "error" not in papers.items[("b1", "A")]
 
 
 def test_reserve_upload_slot_allows_up_to_cap_then_rejects(tables):

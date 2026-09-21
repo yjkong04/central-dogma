@@ -1,6 +1,7 @@
 -r requirements.txt
 pytest==8.3.4
 httpx==0.28.1
+requests==2.32.3
 fpdf2==2.8.1
 # Small CPU-only wheel needed so tests/test_pdf_*.py can be collected in CI;
 # heavy docTR/ultralytics deps stay in requirements-ingest.txt.

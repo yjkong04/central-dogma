@@ -27,6 +27,23 @@ class _FakeDoc:
         self.closed = True
 
 
+class _FakeDocBadIndex(_FakeDoc):
+    """Like _FakeDoc, but __getitem__ itself raises for a chosen page index.
+
+    Models a corrupt/unreadable page-directory entry in an untrusted PDF,
+    which pypdfium2 can surface as an exception straight out of doc[i].
+    """
+
+    def __init__(self, n: int, bad_index: int) -> None:
+        super().__init__(n)
+        self._bad_index = bad_index
+
+    def __getitem__(self, i: int) -> _FakePage:
+        if i == self._bad_index:
+            raise RuntimeError("corrupt page directory entry")
+        return super().__getitem__(i)
+
+
 def _write_fake_pdf(tmp_path):
     p = tmp_path / "fake.pdf"
     p.write_bytes(b"%PDF-1.4 fake")
@@ -68,6 +85,24 @@ def test_bad_page_is_logged_not_raised(monkeypatch, tmp_path, caplog):
 
     assert pages == []
     assert any("boom" in rec.message for rec in caplog.records)
+
+
+def test_bad_page_index_access_is_skipped_not_fatal(monkeypatch, tmp_path, caplog):
+    # doc[i] itself raises for page index 1 (corrupt page-directory entry),
+    # not _rasterize_page or _native_text. render_pdf must still skip just
+    # that page and keep rendering the rest, not abort the whole PDF.
+    pdf_path = _write_fake_pdf(tmp_path)
+    fake_doc = _FakeDocBadIndex(3, bad_index=1)
+    monkeypatch.setattr(render.pdfium, "PdfDocument", lambda path: fake_doc)
+    monkeypatch.setattr(render, "_native_text", lambda page, scale, i: [])
+    monkeypatch.setattr(render, "_rasterize_page", lambda page, index, dpi: object())
+
+    with caplog.at_level(logging.WARNING):
+        pages = render.render_pdf(pdf_path)
+
+    assert [pg.index for pg in pages] == [0, 2]
+    assert fake_doc.closed
+    assert any("corrupt page directory entry" in rec.message for rec in caplog.records)
 
 
 def test_native_text_failure_keeps_page_with_empty_text(monkeypatch, tmp_path, caplog):

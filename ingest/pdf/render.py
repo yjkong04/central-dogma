@@ -41,8 +41,8 @@ def render_pdf(path: str | Path, dpi: int = 200, max_pages: int = 40) -> list[Pa
     pages: list[Page] = []
     try:
         for i in range(min(len(doc), max_pages)):
-            page = doc[i]
             try:
+                page = doc[i]
                 image = _rasterize_page(page, i, dpi)
             except Exception as e:  # untrusted page: isolate, don't abort the whole PDF
                 logger.warning("skipping page %d of %s: %s", i, p, e)

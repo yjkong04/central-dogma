@@ -60,6 +60,44 @@ def test_empty_or_no_pdf_zip_raises():
         plan_batch(_zip({}), "zip", LIMITS)
 
 
+def test_zip_size_decision_ignores_declared_file_size(monkeypatch):
+    """`ZipInfo.file_size` is attacker-controlled central-directory metadata,
+    not a property of the actual bytes a member decompresses to, so the size
+    cap must be decided from bytes actually read, never from the declared
+    value. Prove it by forging file_size to look huge on a member whose real
+    content is well under the limit — plan_batch must still accept it,
+    showing the decision tracks real bytes rather than trusting metadata."""
+    data = _zip({"tiny.pdf": b"%PDF-1.7 body"})
+
+    real_getinfo = zipfile.ZipFile.getinfo
+
+    def lying_getinfo(self, name):
+        info = real_getinfo(self, name)
+        info.file_size = 100 * 1_048_576  # falsely claim the member is huge
+        return info
+
+    monkeypatch.setattr(zipfile.ZipFile, "getinfo", lying_getinfo)
+
+    out = plan_batch(data, "zip", LIMITS)
+    assert [(e.filename, e.data) for e in out] == [("tiny.pdf", b"%PDF-1.7 body")]
+
+
+def test_corrupt_member_raises_invalid_archive_not_raw_badzipfile():
+    """A structurally valid zip whose member data is corrupted (flipped byte
+    breaks the CRC-32) must surface as a typed PlanError, never an unhandled
+    zipfile.BadZipFile crash."""
+    data = bytearray(_zip({"a.pdf": b"%PDF-1.7 " + b"y" * 100}))
+    # Flip a byte inside the stored file data (after the local header + name)
+    # so the CRC-32 recorded at zip-creation time no longer matches.
+    marker = b"%PDF-1.7 "
+    idx = data.index(marker) + len(marker)
+    data[idx] ^= 0xFF
+
+    with pytest.raises(PlanError) as exc_info:
+        plan_batch(bytes(data), "zip", LIMITS)
+    assert isinstance(exc_info.value, InvalidArchive)
+
+
 def test_corrupt_zip_raises_invalid_archive():
     with pytest.raises(PlanError) as exc_info:
         plan_batch(b"this is not a zip", "zip", LIMITS)

@@ -77,6 +77,8 @@ Multi-paper synthesis across the whole corpus, PDF layout parsing beyond what th
 ## Status
 Weeks 1–6 done: the API runs on a built-in demo store with zero setup, **and** on a real corpus — PubMed Central Open Access papers ingested into pgvector, answered by dense (HNSW cosine) retrieval, multi-hop context assembly, and a local vision-language model, with citations to real passages and figures. An evaluation harness scores retrieval, groundedness, and refusal, and drives a comparison across candidate local VLMs. A **Next.js viewer** renders the grounded answer with inline citations and an evidence panel, so clicking a claim highlights the passage or figure it came from. A fully-managed **live demo on AWS** (Bedrock generation/embeddings, Lambda API, static frontend on S3/CloudFront) is ready to deploy — see [Live demo](#live-demo) above.
 
+**"Analyze any paper" build (in progress):** a self-hosted CV/ML pipeline (`ingest.pdf`, sub-project 1) turns an arbitrary PDF into the same indexed shape as the PMC path — see [Ingest any PDF](#ingest-any-pdf-experimental). The async side (sub-projects 3a/3b-i) adds a durable, rate-limited upload API and an S3-triggered dispatcher that fans a `.zip` of PDFs onto SQS per-paper — see [Async PDF upload](#async-pdf-upload-experimental). The SQS-consuming worker that actually runs ingestion end-to-end (sub-project 3b-ii) is the next slice; until it lands, dispatched papers reach `pending` but don't yet process.
+
 ## Quickstart
 
 ```bash
@@ -145,6 +147,30 @@ or a torch-free run, set `CENTRALDOGMA_EMBEDDER=hashing` (deterministic, not sem
 cited-answer index used for the PMC demo — OCR (docTR) for scanned pages, a
 YOLO/DETR layout model for reading order + figures. Deps: `pip install -r
 requirements-ingest.txt`. This is sub-project 1 of the "analyze any paper" build.
+
+### Async PDF upload (experimental)
+
+`POST /uploads` reserves a durable, per-UTC-day upload slot and returns a
+presigned S3 **POST** (size capped at the S3 edge, not just in application
+code) that the caller uploads a `.zip` (of PDFs) or a single `.pdf` to
+directly:
+
+```bash
+curl -s -X POST localhost:8000/uploads -H 'content-type: application/json' \
+  -d '{"filename": "papers.zip", "kind": "zip"}' | python3 -m json.tool
+# -> {"batch_id": "...", "upload": {"url": "...", "fields": {...}}}
+
+curl -s localhost:8000/batches/<batch_id> | python3 -m json.tool
+# -> {"batch_id", "state", "total", "done", "failed", "papers": [...]}
+```
+
+Once the object lands in S3, a dispatcher Lambda unzips it, validates each
+PDF (count/size caps, decompression-bomb guarded), and fans one SQS message
+per PDF with per-paper status tracked in DynamoDB. Deploys via the additive
+IaC slice in `deploy/template.yaml` (uploads bucket, `batches`/`papers`
+tables, SQS + DLQ). The worker that consumes those SQS messages and actually
+runs `parse_pdf` → embed → store end-to-end (sub-project 3b-ii) isn't wired
+up yet, so dispatched papers currently sit at `pending`.
 
 ## Evaluation
 

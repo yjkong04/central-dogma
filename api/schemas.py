@@ -54,3 +54,34 @@ class AskResponse(BaseModel):
     confidence: float | None = None
     # Distinct sections the answer draws on — a multi-hop coverage signal.
     sections_covered: int = 0
+
+
+class UploadRequest(BaseModel):
+    filename: str
+    kind: Literal["zip", "pdf"] = "zip"
+
+
+class PresignedPost(BaseModel):
+    url: str
+    fields: dict[str, str]
+
+
+class UploadResponse(BaseModel):
+    batch_id: str
+    upload: PresignedPost
+
+
+class PaperState(BaseModel):
+    paper_id: str
+    filename: str
+    state: str
+    error: str | None = None
+
+
+class BatchStatusResponse(BaseModel):
+    batch_id: str
+    state: str
+    total: int
+    done: int
+    failed: int
+    papers: list[PaperState]

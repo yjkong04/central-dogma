@@ -34,6 +34,9 @@ Resources:
           CENTRALDOGMA_AURORA_CLUSTER_ARN: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
           CENTRALDOGMA_AURORA_SECRET_ARN: !Ref DbSecret
           CENTRALDOGMA_AURORA_DATABASE: centraldogma
+          CENTRALDOGMA_UPLOADS_BUCKET: !Ref UploadsBucket
+          CENTRALDOGMA_BATCHES_TABLE: !Ref BatchesTable
+          CENTRALDOGMA_PAPERS_TABLE: !Ref PapersTable
       Policies:
         - Statement:
             - Effect: Allow
@@ -51,12 +54,75 @@ Resources:
             - Effect: Allow
               Action: [secretsmanager:GetSecretValue]
               Resource: !Ref DbSecret
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BatchesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PapersTable
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub "${UploadsBucket.Arn}/uploads/*"
       FunctionUrlConfig:
         AuthType: NONE
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ..
       DockerTag: latest
+
+  BatchesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: batch_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: batch_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  PapersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: batch_id
+          AttributeType: S
+        - AttributeName: paper_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: batch_id
+          KeyType: HASH
+        - AttributeName: paper_id
+          KeyType: RANGE
+
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-uploads
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [POST, PUT]
+            AllowedOrigins: [!Ref AllowedOrigin]
+            AllowedHeaders: ["*"]
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
 
   DbSecret:
     Type: AWS::SecretsManager::Secret
@@ -158,3 +224,9 @@ Outputs:
     Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
   AuroraSecretArn:
     Value: !Ref DbSecret
+  UploadsBucketName:
+    Value: !Ref UploadsBucket
+  BatchesTableName:
+    Value: !Ref BatchesTable
+  PapersTableName:
+    Value: !Ref PapersTable

@@ -5,17 +5,25 @@ Run: uvicorn api.main:app --reload
 
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from botocore.exceptions import ClientError
 
 from .config import get_settings
 from .generation import Generator, build_generator
 from .pipeline import answer_question
 from .ratelimit import DailyCapMiddleware
-from .schemas import AskRequest, AskResponse
+from .schemas import AskRequest, AskResponse, UploadRequest, UploadResponse, BatchStatusResponse
 from .store import DemoStore, PgVectorStore, Store
 from .store_aurora import StoreUnavailable
+from . import uploads
+from .uploads import UploadCapReached, BatchNotFound
+
+logger = logging.getLogger("centraldogma.api")
 
 app = FastAPI(
     title="Central Dogma",
@@ -30,6 +38,24 @@ async def _store_unavailable_handler(request, exc):
         status_code=503,
         content={"detail": str(exc) or "vector store is warming up; please retry shortly"},
     )
+
+
+@app.exception_handler(UploadCapReached)
+async def _upload_cap_handler(request, exc):
+    return JSONResponse(status_code=429, content={"detail": str(exc) or "daily upload limit reached"})
+
+
+@app.exception_handler(BatchNotFound)
+async def _batch_not_found_handler(request, exc):
+    return JSONResponse(status_code=404, content={"detail": f"batch {exc} not found"})
+
+
+@app.exception_handler(ClientError)
+async def _aws_client_error_handler(request, exc):
+    # App-wide: also covers /ask. A boto3 fault degrades to 503 (not 500);
+    # log it so a real IAM/config error isn't silently masked as "transient".
+    logger.exception("AWS ClientError on %s", request.url.path)
+    return JSONResponse(status_code=503, content={"detail": "storage temporarily unavailable; retry shortly"})
 
 
 def _build_embedder():
@@ -105,3 +131,14 @@ def health() -> dict[str, str]:
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest) -> AskResponse:
     return answer_question(req, _store, _generator)
+
+
+@app.post("/uploads", response_model=UploadResponse)
+def create_upload(req: UploadRequest) -> UploadResponse:
+    result = uploads.create_batch(req.filename, req.kind, now=datetime.now(timezone.utc))
+    return UploadResponse(**result)
+
+
+@app.get("/batches/{batch_id}", response_model=BatchStatusResponse)
+def get_batch_status(batch_id: str) -> BatchStatusResponse:
+    return BatchStatusResponse(**uploads.get_batch(batch_id))

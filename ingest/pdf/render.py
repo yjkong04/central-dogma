@@ -5,12 +5,28 @@ rendering is not gated behind the slow marker.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pypdfium2 as pdfium
 from PIL import Image
 
 from .types import Page, PdfIngestError, TextBlock
+
+logger = logging.getLogger(__name__)
+
+# Untrusted PDFs can declare huge page dimensions; without a cap a single
+# page can try to allocate an enormous bitmap (OOM / DoS). ~40 MP is well
+# above any normal document page at typical ingestion DPI.
+MAX_RENDER_PX = 40_000_000  # ~40 MP cap per rendered page
+
+
+class RenderError(PdfIngestError):
+    """Base class for page-render failures."""
+
+
+class RenderTooLarge(RenderError):
+    """Raised when a page's rendered bitmap would exceed MAX_RENDER_PX."""
 
 
 def render_pdf(path: str | Path, dpi: int = 200, max_pages: int = 40) -> list[Page]:
@@ -27,16 +43,31 @@ def render_pdf(path: str | Path, dpi: int = 200, max_pages: int = 40) -> list[Pa
         for i in range(min(len(doc), max_pages)):
             try:
                 page = doc[i]
-                image: Image.Image = page.render(scale=scale).to_pil().convert("RGB")
+                image = _rasterize_page(page, i, dpi)
                 native = _native_text(page, scale, i)
                 pages.append(Page(index=i, image=image, native_text=native))
-            except PdfIngestError:
-                raise
-            except Exception as e:  # pypdfium raises assorted errors on bad pages
-                raise PdfIngestError(f"failed to process page {i} of {p}: {e}") from e
+            except Exception as e:  # untrusted page: isolate, don't abort the whole PDF
+                logger.warning("skipping page %d of %s: %s", i, p, e)
+                continue
     finally:
         doc.close()
     return pages
+
+
+def _guard_render_size(width_px: int, height_px: int) -> None:
+    """Raise RenderTooLarge if the requested bitmap would exceed MAX_RENDER_PX."""
+    if width_px * height_px > MAX_RENDER_PX:
+        raise RenderTooLarge(
+            f"render size {width_px}x{height_px} exceeds cap {MAX_RENDER_PX}"
+        )
+
+
+def _rasterize_page(page: "pdfium.PdfPage", index: int, dpi: int) -> Image.Image:
+    """Render a single page to a PIL image, bounded by MAX_RENDER_PX."""
+    scale = dpi / 72.0
+    width_pt, height_pt = page.get_size()
+    _guard_render_size(int(width_pt * scale), int(height_pt * scale))
+    return page.render(scale=scale).to_pil().convert("RGB")
 
 
 def _native_text(page: "pdfium.PdfPage", scale: float, page_index: int) -> list[TextBlock]:

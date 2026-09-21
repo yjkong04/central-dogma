@@ -10,7 +10,7 @@ from .assemble import assemble
 from .caption import CaptionTextUnderstander
 from .ocr import text_for_page
 from .render import render_pdf
-from .types import FigureUnderstander, LayoutDetector, Ocr
+from .types import FigureUnderstander, LayoutDetector, Ocr, PdfIngestError
 
 
 def _paper_id(path: Path) -> str:
@@ -29,10 +29,28 @@ def parse_pdf(path, *, ocr: Ocr | None = None, layout: LayoutDetector | None = N
     understander = understander or CaptionTextUnderstander()
 
     pages = render_pdf(p, dpi=dpi, max_pages=max_pages)
-    text_by_page = {pg.index: text_for_page(pg, ocr) for pg in pages}
-    regions_by_page = {pg.index: layout.detect(pg.image, pg.index) for pg in pages}
+    text_by_page = {pg.index: _ocr_page(pg, ocr) for pg in pages}
+    regions_by_page = {pg.index: _detect_layout(pg, layout) for pg in pages}
     title = _guess_title(text_by_page)
     return assemble(_paper_id(p), title, pages, text_by_page, regions_by_page, understander)
+
+
+def _ocr_page(page, ocr: Ocr):
+    try:
+        return text_for_page(page, ocr)
+    except PdfIngestError:
+        raise
+    except Exception as e:  # OCR backends raise assorted errors on bad pages
+        raise PdfIngestError(f"OCR failed on page {page.index}: {e}") from e
+
+
+def _detect_layout(page, layout: LayoutDetector):
+    try:
+        return layout.detect(page.image, page.index)
+    except PdfIngestError:
+        raise
+    except Exception as e:  # layout backends raise assorted errors on bad pages
+        raise PdfIngestError(f"layout detection failed on page {page.index}: {e}") from e
 
 
 def _guess_title(text_by_page) -> str | None:

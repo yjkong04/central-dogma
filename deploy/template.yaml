@@ -98,9 +98,63 @@ Resources:
         - AttributeName: paper_id
           KeyType: RANGE
 
+  IngestDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600   # 14 days
+
+  IngestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 900            # >= the SP3b-ii worker's max runtime
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestDlq.Arn
+        maxReceiveCount: 3
+
+  DispatcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Handler: worker.dispatcher.handler
+      CodeUri: ..
+      Timeout: 120
+      MemorySize: 1024
+      Environment:
+        Variables:
+          CENTRALDOGMA_AWS_REGION: !Ref AWS::Region
+          CENTRALDOGMA_UPLOADS_QUEUE_URL: !Ref IngestQueue
+          CENTRALDOGMA_BATCHES_TABLE: !Ref BatchesTable
+          CENTRALDOGMA_PAPERS_TABLE: !Ref PapersTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BatchesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PapersTable
+        - Statement:
+            - Effect: Allow
+              Action: [s3:GetObject]
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/uploads/*"
+            - Effect: Allow
+              Action: [s3:PutObject]
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/papers/*"
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt IngestQueue.QueueName
+      Events:
+        UploadCreated:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+
   UploadsBucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Sub "${AWS::StackName}-uploads-${AWS::AccountId}"
       LifecycleConfiguration:
         Rules:
           - Id: expire-uploads
@@ -230,3 +284,9 @@ Outputs:
     Value: !Ref BatchesTable
   PapersTableName:
     Value: !Ref PapersTable
+  IngestQueueUrl:
+    Value: !Ref IngestQueue
+  IngestQueueArn:
+    Value: !GetAtt IngestQueue.Arn
+  IngestDlqArn:
+    Value: !GetAtt IngestDlq.Arn

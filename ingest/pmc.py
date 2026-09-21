@@ -28,6 +28,7 @@ class Figure:
     fig_id: str | None = None  # JATS xml id, useful to resolve the image file later
     graphic_href: str | None = None  # <graphic> filename; resolves to a public image URL
     image_uri: str | None = None  # CDN image URL, filled in by ingest.figures
+    image_bytes: bytes | None = None  # PNG/JPG bytes, populated by parse_pdf
 
 
 @dataclass

@@ -42,17 +42,28 @@ class FakeTable:
             item["n"] = (n or 0) + vals[":one"]
             item.setdefault("ttl", vals[":ttl"])
         else:
-            # counter bumps: ADD done :d, failed :f  /  SET state=..., error=...
+            # counter bumps: ADD done :d, failed :f (both ints)  /  SET state, error, total (mixed types)
             for token, val in vals.items():
                 attr = token.lstrip(":")
-                if attr in ("d", "done"):
-                    item["done"] = item.get("done", 0) + val
-                elif attr in ("f", "failed"):
-                    item["failed"] = item.get("failed", 0) + val
+                # Integer counters (ADD operations use short keys with int values)
+                if isinstance(val, int) and attr in ("d", "f"):
+                    if attr == "d":
+                        item["done"] = item.get("done", 0) + val
+                    elif attr == "f":
+                        item["failed"] = item.get("failed", 0) + val
+                # String/direct SET operations
                 elif attr == "state":
                     item["state"] = val
                 elif attr == "error":
                     item["error"] = val
+                elif attr == "t":
+                    item["total"] = val
+                elif attr == "st":
+                    item["state"] = val
+                elif attr == "err":
+                    item["error"] = val
+                elif attr == "failed":
+                    item["state"] = val
 
 
 @pytest.fixture
@@ -99,3 +110,19 @@ def test_bump_counters_and_mark_paper(tables):
 def test_reserve_upload_slot_allows_up_to_cap_then_rejects(tables):
     ok = [ss.reserve_upload_slot("2026-09-15", cap=3, ttl_epoch=999) for _ in range(4)]
     assert ok == [True, True, True, False]
+
+
+def test_set_batch_total_sets_total_and_state(tables):
+    batches, _ = tables
+    ss.put_batch("b1", created_at="t")
+    ss.set_batch_total("b1", total=3, state="running")
+    assert batches.items[("b1",)]["total"] == 3
+    assert batches.items[("b1",)]["state"] == "running"
+
+
+def test_mark_batch_failed_sets_state_and_error(tables):
+    batches, _ = tables
+    ss.put_batch("b1", created_at="t")
+    ss.mark_batch_failed("b1", "bad zip")
+    assert batches.items[("b1",)]["state"] == "failed"
+    assert batches.items[("b1",)]["error"] == "bad zip"

@@ -92,3 +92,21 @@ def reserve_upload_slot(day: str, cap: int, ttl_epoch: int) -> bool:
         if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
             return False
         raise
+
+
+def set_batch_total(batch_id: str, total: int, state: str = "running") -> None:
+    _table(get_settings().batches_table).update_item(
+        Key={"batch_id": batch_id},
+        UpdateExpression="SET #tot = :t, #s = :st",
+        ExpressionAttributeNames={"#tot": "total", "#s": "state"},
+        ExpressionAttributeValues={":t": total, ":st": state},
+    )
+
+
+def mark_batch_failed(batch_id: str, error: str) -> None:
+    _table(get_settings().batches_table).update_item(
+        Key={"batch_id": batch_id},
+        UpdateExpression="SET #s = :failed, #e = :err",
+        ExpressionAttributeNames={"#s": "state", "#e": "error"},
+        ExpressionAttributeValues={":failed": "failed", ":err": error},
+    )

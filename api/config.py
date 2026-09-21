@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     max_pdf_mb: int = 20
     upload_daily_cap: int = 50
     upload_url_ttl_s: int = 900
+    uploads_queue_url: str = ""  # SQS main queue the dispatcher fans PDFs onto (SP3b)
 
 
 @lru_cache

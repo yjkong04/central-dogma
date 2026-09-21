@@ -70,6 +70,32 @@ def test_bad_page_is_logged_not_raised(monkeypatch, tmp_path, caplog):
     assert any("boom" in rec.message for rec in caplog.records)
 
 
+def test_native_text_failure_keeps_page_with_empty_text(monkeypatch, tmp_path, caplog):
+    # Rasterize succeeds; _native_text raises something other than pdfium.PdfiumError
+    # (e.g. an unexpected bug). The page must still be kept, image intact, with
+    # native_text degraded to [] rather than the whole page being dropped.
+    pdf_path = _write_fake_pdf(tmp_path)
+    fake_doc = _FakeDoc(1)
+    monkeypatch.setattr(render.pdfium, "PdfDocument", lambda path: fake_doc)
+
+    sentinel_image = object()
+    monkeypatch.setattr(render, "_rasterize_page", lambda page, index, dpi: sentinel_image)
+
+    def fake_native_text(page, scale, i):
+        raise AttributeError("unexpected bug, not a missing-text-layer case")
+
+    monkeypatch.setattr(render, "_native_text", fake_native_text)
+
+    with caplog.at_level(logging.WARNING):
+        pages = render.render_pdf(pdf_path)
+
+    assert len(pages) == 1
+    assert pages[0].index == 0
+    assert pages[0].image is sentinel_image
+    assert pages[0].native_text == []
+    assert any("native text extraction failed" in rec.message for rec in caplog.records)
+
+
 def test_max_render_px_constant_is_positive():
     assert render.MAX_RENDER_PX > 0
 

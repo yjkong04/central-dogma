@@ -151,6 +151,85 @@ Resources:
                   - Name: prefix
                     Value: uploads/
 
+  IngestWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures: [arm64]
+      Timeout: 900
+      MemorySize: 4096
+      Environment:
+        Variables:
+          CENTRALDOGMA_AWS_REGION: !Ref AWS::Region
+          CENTRALDOGMA_STORE_BACKEND: aurora
+          CENTRALDOGMA_EMBEDDER: bedrock
+          CENTRALDOGMA_EMBEDDING_DIM: "1024"
+          CENTRALDOGMA_UPLOADS_BUCKET: !Ref UploadsBucket
+          CENTRALDOGMA_FIGURES_BUCKET: !Ref FiguresBucket
+          CENTRALDOGMA_FIGURES_BASE_URL: !Sub "https://${SiteDistribution.DomainName}"
+          CENTRALDOGMA_AURORA_CLUSTER_ARN: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+          CENTRALDOGMA_AURORA_SECRET_ARN: !Ref DbSecret
+          CENTRALDOGMA_AURORA_DATABASE: centraldogma
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [s3:GetObject]
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-uploads-${AWS::AccountId}/papers/*"
+            - Effect: Allow
+              Action: [s3:PutObject]
+              Resource: !Sub "${FiguresBucket.Arn}/figures/*"
+            - Effect: Allow
+              Action: [rds-data:ExecuteStatement, rds-data:BatchExecuteStatement,
+                       rds-data:BeginTransaction, rds-data:CommitTransaction, rds-data:RollbackTransaction]
+              Resource: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref DbSecret
+            - Effect: Allow
+              Action: [bedrock:InvokeModel]
+              Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+        - DynamoDBCrudPolicy: { TableName: !Ref BatchesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref PapersTable }
+      Events:
+        Ingest:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt IngestQueue.Arn
+            BatchSize: 1
+            ScalingConfig:
+              MaximumConcurrency: 2
+    Metadata:
+      Dockerfile: Dockerfile.worker
+      DockerContext: ..
+      DockerTag: latest
+
+  FiguresBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      OwnershipControls: { Rules: [ { ObjectOwnership: BucketOwnerEnforced } ] }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+
+  FiguresBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FiguresBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub "${FiguresBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}"
+
   UploadsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -246,10 +325,19 @@ Resources:
             DomainName: !GetAtt SiteBucket.RegionalDomainName
             OriginAccessControlId: !Ref SiteOAC
             S3OriginConfig: { OriginAccessIdentity: "" }
+          - Id: figuresorigin
+            DomainName: !GetAtt FiguresBucket.RegionalDomainName
+            OriginAccessControlId: !Ref SiteOAC
+            S3OriginConfig: { OriginAccessIdentity: "" }
         DefaultCacheBehavior:
           TargetOriginId: s3origin
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+        CacheBehaviors:
+          - PathPattern: figures/*
+            TargetOriginId: figuresorigin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -290,3 +378,7 @@ Outputs:
     Value: !GetAtt IngestQueue.Arn
   IngestDlqArn:
     Value: !GetAtt IngestDlq.Arn
+  FiguresBucketName:
+    Value: !Ref FiguresBucket
+  IngestWorkerFunctionArn:
+    Value: !GetAtt IngestWorkerFunction.Arn

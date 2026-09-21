@@ -139,6 +139,13 @@ curl -s -X POST localhost:8000/ask -H 'content-type: application/json' \
 Embeddings default to `BAAI/bge-small-en-v1.5` (384-dim, CPU-friendly). For tests
 or a torch-free run, set `CENTRALDOGMA_EMBEDDER=hashing` (deterministic, not semantic).
 
+### Ingest any PDF (experimental)
+
+`python -m ingest.pdf paper.pdf --model layout.pt` turns a raw PDF into the same
+cited-answer index used for the PMC demo — OCR (docTR) for scanned pages, a
+YOLO/DETR layout model for reading order + figures. Deps: `pip install -r
+requirements-ingest.txt`. This is sub-project 1 of the "analyze any paper" build.
+
 ## Evaluation
 
 A held-out question set is scored on three axes, so the system is measured rather

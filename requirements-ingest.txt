@@ -1,0 +1,8 @@
+# Self-hosted CV/ML deps for PDF ingestion (sub-project 1). Kept OUT of
+# requirements.txt so the API image + default CI stay lean. Versions pinned
+# in Task 3/Task 4 once the OCR + layout backends are chosen.
+pypdfium2==4.30.0
+Pillow==11.0.0
+numpy==2.2.1
+python-doctr[torch]==0.10.0
+ultralytics==8.3.0

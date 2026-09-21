@@ -1,0 +1,32 @@
+# Dockerfile.worker — SQS-triggered ingestion worker (SP1 CV stack).
+#
+# python:3.11 is Amazon Linux 2 (glibc 2.26, EOL 2026-06-30) -- too old for the
+# manylinux_2_28 wheels most of the CV stack's transitive deps (h5py, ml_dtypes,
+# scipy) ship today, which forces from-source builds that then fail (AL2 has no
+# C compiler at all). python:3.12 is Amazon Linux 2023 (glibc 2.34, supported to
+# 2029); CI already tests py3.11/3.12 so this is a safe base-image swap that
+# sidesteps the whole class of wheel-availability problems.
+FROM public.ecr.aws/lambda/python:3.12
+
+# opencv-python (pulled in transitively by docTR + ultralytics) needs real X11/GL
+# shared libs at import time even in headless use -- absent from this minimal base.
+RUN dnf install -y mesa-libGL libXext libSM libXrender libxcb && dnf clean all
+
+# CPU-only torch + torchvision from the SAME index (Lambda has no GPU): letting
+# torchvision resolve from plain PyPI instead pulls a build with a mismatched ABI
+# against the +cpu torch build ("operator torchvision::nms does not exist").
+COPY requirements-ingest.txt requirements.txt ./
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --no-cache-dir -r requirements-ingest.txt -r requirements.txt
+
+# Bake the doc-layout checkpoint: yolov8s-doclaynet.pt (hantian/yolo-doclaynet on
+# Hugging Face), a YOLOv8-small model fine-tuned on DocLayNet. Fetch it into
+# models/layout.pt before building (not committed -- see .gitignore).
+COPY models/layout.pt /opt/models/layout.pt
+ENV CENTRALDOGMA_LAYOUT_CHECKPOINT_PATH=/opt/models/layout.pt
+
+COPY api ${LAMBDA_TASK_ROOT}/api
+COPY ingest ${LAMBDA_TASK_ROOT}/ingest
+COPY worker ${LAMBDA_TASK_ROOT}/worker
+
+CMD ["worker.handler.handler"]

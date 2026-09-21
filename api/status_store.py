@@ -41,18 +41,32 @@ def put_paper(batch_id: str, paper_id: str, filename: str, state: str = "pending
     })
 
 
-def mark_paper(batch_id: str, paper_id: str, state: str, error: str | None = None) -> None:
+def mark_paper(batch_id: str, paper_id: str, state: str, error: str | None = None) -> bool:
+    """Set the paper's state, unless it's already terminal ("done"/"failed").
+
+    Returns True if this call actually performed the state transition, False
+    if it was a no-op because the paper was already terminal (e.g. a redelivered
+    SQS message reprocessing an already-completed paper). Callers use the return
+    value to avoid double-counting bump_counters on redelivery.
+    """
     expr = "SET #s = :state"
     names = {"#s": "state"}
-    vals = {":state": state}
+    vals = {":state": state, ":done": "done", ":failed": "failed"}
     if error is not None:
         expr += ", #e = :error"
         names["#e"] = "error"
         vals[":error"] = error
-    _table(get_settings().papers_table).update_item(
-        Key={"batch_id": batch_id, "paper_id": paper_id},
-        UpdateExpression=expr, ExpressionAttributeNames=names, ExpressionAttributeValues=vals,
-    )
+    try:
+        _table(get_settings().papers_table).update_item(
+            Key={"batch_id": batch_id, "paper_id": paper_id},
+            UpdateExpression=expr, ExpressionAttributeNames=names, ExpressionAttributeValues=vals,
+            ConditionExpression="attribute_not_exists(#s) OR (#s <> :done AND #s <> :failed)",
+        )
+        return True
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return False
+        raise
 
 
 def bump_counters(batch_id: str, *, done: int = 0, failed: int = 0) -> None:

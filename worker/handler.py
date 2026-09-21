@@ -47,7 +47,7 @@ def _get_embedder():
     global _embedder
     if _embedder is None:
         s = get_settings()
-        _embedder = build_embedder("bedrock", s.bedrock_embedding_model, s.embedding_dim)
+        _embedder = build_embedder(s.embedder, s.bedrock_embedding_model, s.embedding_dim)
     return _embedder
 
 
@@ -76,11 +76,11 @@ def _ingest_one(msg: dict) -> None:
                                 s.figures_bucket, s.figures_base_url)
         text_records, figure_records = build_records(paper, chunks, embeddings, crop_urls)
         _get_store().upsert_paper(paper.paper_id, text_records, figure_records)
-        status_store.mark_paper(batch_id, status_id, "done")
-        status_store.bump_counters(batch_id, done=1)
+        if status_store.mark_paper(batch_id, status_id, "done"):
+            status_store.bump_counters(batch_id, done=1)
     except Exception as exc:
-        status_store.mark_paper(batch_id, status_id, "failed", error=str(exc))
-        status_store.bump_counters(batch_id, failed=1)
+        if status_store.mark_paper(batch_id, status_id, "failed", error=str(exc)):
+            status_store.bump_counters(batch_id, failed=1)
         raise
 
 

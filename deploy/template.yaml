@@ -106,7 +106,7 @@ Resources:
   IngestQueue:
     Type: AWS::SQS::Queue
     Properties:
-      VisibilityTimeout: 900            # >= the SP3b-ii worker's max runtime
+      VisibilityTimeout: 2700            # 3x the worker's 900s Timeout -- SQS's visibility clock starts at ReceiveMessage, not invoke, so a near-deadline invocation needs real headroom before redelivery
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt IngestDlq.Arn
         maxReceiveCount: 3
@@ -188,8 +188,11 @@ Resources:
             - Effect: Allow
               Action: [bedrock:InvokeModel]
               Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
-        - DynamoDBCrudPolicy: { TableName: !Ref BatchesTable }
-        - DynamoDBCrudPolicy: { TableName: !Ref PapersTable }
+            - Effect: Allow
+              Action: [dynamodb:UpdateItem]
+              Resource:
+                - !GetAtt BatchesTable.Arn
+                - !GetAtt PapersTable.Arn
       Events:
         Ingest:
           Type: SQS

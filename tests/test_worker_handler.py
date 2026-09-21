@@ -27,10 +27,23 @@ class FakeStore:
 
 
 class RecordingStatus:
+    """Fake status_store that enforces the same idempotency contract as the
+    real DynamoDB-backed mark_paper: once a (batch_id, paper_id) is marked
+    "done" or "failed", further mark_paper calls for it are no-ops that
+    return False -- so callers relying on the return value to gate
+    bump_counters are exercised honestly, not just called through blindly.
+    """
     def __init__(self):
         self.marks, self.bumps = [], []
+        self._terminal = {}
     def mark_paper(self, batch_id, paper_id, state, error=None):
         self.marks.append((batch_id, paper_id, state, error))
+        key = (batch_id, paper_id)
+        if key in self._terminal:
+            return False
+        if state in ("done", "failed"):
+            self._terminal[key] = state
+        return True
     def bump_counters(self, batch_id, *, done=0, failed=0):
         self.bumps.append((batch_id, done, failed))
 
@@ -82,5 +95,38 @@ def test_failure_marks_failed_and_reraises(wired, monkeypatch):
     with pytest.raises(RuntimeError):
         wh.handler({"Records": [{"body": json.dumps(MSG)}]}, None)
     assert status.marks == [("B1", "batch-B1-0", "failed", "boom")]
+    assert status.bumps == [("B1", 0, 1)]
+    assert store.upserts == []
+
+
+def test_redelivered_message_does_not_double_bump_counters(wired):
+    # simulates SQS at-least-once redelivery: the same message is processed
+    # twice (e.g. a near-deadline invocation that still succeeded but got
+    # redelivered anyway). The second _ingest_one call must still upsert to
+    # Aurora (idempotent there) but must NOT bump the batch counters again,
+    # since mark_paper is a no-op the second time around.
+    status, store = wired
+    msg = json.loads(json.dumps(MSG))
+    wh._ingest_one(msg)
+    wh._ingest_one(msg)
+    assert len(store.upserts) == 2
+    assert status.marks == [
+        ("B1", "batch-B1-0", "done", None),
+        ("B1", "batch-B1-0", "done", None),
+    ]
+    assert status.bumps == [("B1", 1, 0)]
+
+
+def test_redelivered_failure_does_not_double_bump_counters(wired, monkeypatch):
+    status, store = wired
+    monkeypatch.setattr(wh, "parse_pdf", lambda path, **kw: (_ for _ in ()).throw(RuntimeError("boom")))
+    msg = json.loads(json.dumps(MSG))
+    for _ in range(2):
+        with pytest.raises(RuntimeError):
+            wh._ingest_one(msg)
+    assert status.marks == [
+        ("B1", "batch-B1-0", "failed", "boom"),
+        ("B1", "batch-B1-0", "failed", "boom"),
+    ]
     assert status.bumps == [("B1", 0, 1)]
     assert store.upserts == []

@@ -5,4 +5,4 @@ requests==2.32.3
 fpdf2==2.8.1
 # Small CPU-only wheel needed so tests/test_pdf_*.py can be collected in CI;
 # heavy docTR/ultralytics deps stay in requirements-ingest.txt.
-pypdfium2==4.30.0
+pypdfium2==5.13.0

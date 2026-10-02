@@ -8,7 +8,7 @@ truststore==0.10.4
 
 # pgvector dense-retrieval path (query embedding + DB access). The heavy HF
 # embedder itself lives in requirements-ml.txt so the demo image stays slim.
-psycopg[binary]==3.2.3
+psycopg[binary]==3.3.6
 pgvector==0.3.6
 numpy==2.2.1
 boto3==1.43.91

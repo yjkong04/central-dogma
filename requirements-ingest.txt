@@ -2,7 +2,7 @@
 # requirements.txt so the API image + default CI stay lean. Versions pinned
 # in Task 3/Task 4 once the OCR + layout backends are chosen.
 pypdfium2==5.13.0
-Pillow==11.0.0
+Pillow==12.3.0
 numpy==2.2.1
 python-doctr[torch]==0.10.0
 # 8.3.0 pins numpy<2.0.0, conflicting with the numpy==2.2.1 pin above (shared

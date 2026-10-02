@@ -7,7 +7,7 @@ sentence-transformers==3.3.1
 
 # Vision generation: local Qwen2.5-VL (generator=qwen-vision). transformers>=4.49
 # is required for the Qwen2.5-VL classes. Also heavy; same install boundary.
-transformers>=4.49.0
+transformers>=5.17.0
 qwen-vl-utils==0.0.14
 accelerate>=1.0.0
 pillow>=12.3.0
